@@ -98,9 +98,13 @@ class App (rapidsms.app.App):
     @authenticated
     def new_announce (self, message, zone, text):
         zone        = zone.lower()
-        recipients  = self.recipients_from_zone(zone, message.peer)        
-        self.group_send(message, recipients, _(u"Annonce (@%(sender)s): %(text)s") % {"text":text, 'sender':message.sender.name})
-        self.followup_new_announce(message, recipients)
+        recipients  = self.recipients_from_zone(zone, message.peer)
+        price       = self.price_per_msg(message, recipients)
+        if message.sender.credit >= price:
+            self.group_send(message, recipients, _(u"Annonce (@%(sender)s): %(text)s") % {"text":text, 'sender':message.sender.name})
+            self.followup_new_announce(message, recipients)
+        else:
+            message.respond(_(u"Désolé, ce message nécessite %(price)dF de crédit. Votre est compte n'en possède que %(credit)sF. Rechargez votre compte puis réessayez.") % {'price':price, 'credit':message.sender.credit})
         return True
 
     def followup_new_announce(self, message, recipients):
@@ -123,6 +127,7 @@ class App (rapidsms.app.App):
         message.sender.active   = False
         message.sender.save()
 
+        # we charge the manager if he has credit but don't prevent sending if he hasn't.
         if self.config['send_exit_notif']:
             recipients  = []
             all_active  = BoardManager.objects.filter(active=True)
@@ -151,6 +156,7 @@ class App (rapidsms.app.App):
         manager.active   = False
         manager.save()
 
+        # we charge the manager if he has credit but don't prevent sending if he hasn't.
         if self.config['send_exit_notif']:
             recipients  = []
             all_active  = BoardManager.objects.filter(active=True)
