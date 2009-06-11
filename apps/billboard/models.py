@@ -9,7 +9,7 @@ class Zone(models.Model):
     def __unicode__(self):
         return self.name
 
-class BoardTigi(models.Model):
+class BoardManager(models.Model):
     name        = models.CharField(max_length=10, primary_key=True, db_index=True)
     mobile      = models.CharField(max_length=16, db_index=True, unique=True)
     credit      = models.IntegerField(default=0)
@@ -27,8 +27,8 @@ class BoardTigi(models.Model):
             return None
 
 class Announcement(models.Model):
-    sender      = models.ForeignKey("BoardTigi", related_name="%(class)s_related_sender")
-    recipients  = models.ManyToManyField("BoardTigi", related_name="%(class)s_related_recipients")
+    sender      = models.ForeignKey("BoardManager", related_name="%(class)s_related_sender")
+    recipients  = models.ManyToManyField("BoardManager", related_name="%(class)s_related_recipients")
     text        = models.CharField(max_length=140)
     date        = models.DateTimeField()
     price       = models.IntegerField(default=0)

@@ -57,9 +57,9 @@ class App (rapidsms.app.App):
         except Exception:
             pass
         
-        tigi = BoardTigi.by_mobile(message.peer)
-        if tigi:
-            message.sender = tigi
+        manager = BoardManager.by_mobile(message.peer)
+        if manager:
+            message.sender = manager
         else:
             message.sender = None
 
@@ -67,9 +67,9 @@ class App (rapidsms.app.App):
         try: # message is credit from orangeml
             if message.transaction:
                 transaction = Transaction.objects.get(id=message.transaction)
-                tigi        = BoardTigi.by_mobile(transaction.mobile)
-                tigi.credit+= transaction.amount
-                tigi.save()
+                manager     = BoardManager.by_mobile(transaction.mobile)
+                manager.credit+= transaction.amount
+                manager.save()
                 transaction.delete()
                 return True
         except AttributeError:
@@ -116,7 +116,7 @@ class App (rapidsms.app.App):
 
         if self.ADVERTISE_EXIT:
             recipients  = []
-            all_active  = BoardTigi.objects.filter(active=True)
+            all_active  = BoardManager.objects.filter(active=True)
             for board in all_active.iterator():
                 recipients.append(board.mobile)
             self.group_send(message, recipients, _(u"Info: @%(sender)s a quitté le réseau.") % {'sender':message.sender.name})
@@ -124,32 +124,32 @@ class App (rapidsms.app.App):
         self.followup_stop_board(message, message.sender, recipients.__len__())
         return True
 
-    def followup_stop_board(self, message, tigi, recipient_nb):
+    def followup_stop_board(self, message, manager, recipient_nb):
         price   = self.PRICE_PER_BOARD * int(recipient_nb)
-        tigi.credit     -= price
-        if tigi.credit < 0:
-            tigi.credit = 0
-        tigi.save()
-        message.forward(tigi.mobile, _(u"Vous avez quitté le réseau. Votre crédit (si vous souhaitez revenir) est de %(credit)sF. Au revoir.") % {'credit':tigi.credit})
+        manager.credit     -= price
+        if manager.credit < 0:
+            manager.credit = 0
+        manager.save()
+        message.forward(manager.mobile, _(u"Vous avez quitté le réseau. Votre crédit (si vous souhaitez revenir) est de %(credit)sF. Au revoir.") % {'credit':manager.credit})
 
     @keyword(r'stop \@(\w+)')
     @sysadmin
     def stop_board (self, message, name):
-        tigi    = BoardTigi.objects.get(name=name)
-        if not tigi.active: # already off
-            message.respond(_(u"@%(tigi)s ne fait pas partie du réseau.") % {'tigi':tigi.name})
+        manager    = BoardManager.objects.get(name=name)
+        if not manager.active: # already off
+            message.respond(_(u"@%(manager)s ne fait pas partie du réseau.") % {'manager':manager.name})
             return True
-        tigi.active   = False
-        tigi.save()
+        manager.active   = False
+        manager.save()
 
         if self.ADVERTISE_EXIT:
             recipients  = []
-            all_active  = BoardTigi.objects.filter(active=True)
+            all_active  = BoardManager.objects.filter(active=True)
             for board in all_active.iterator():
                 recipients.append(board.mobile)
-            self.group_send(message, recipients, _(u"Info: @%(sender)s a quitté le réseau.") % {'sender':tigi.name})
+            self.group_send(message, recipients, _(u"Info: @%(sender)s a quitté le réseau.") % {'sender':manager.name})
 
-        self.followup_stop_board(message, tigi, recipients.__len__())
+        self.followup_stop_board(message, manager, recipients.__len__())
         return True
 
     def group_send(self, message, recipients, text):
@@ -161,7 +161,7 @@ class App (rapidsms.app.App):
         recipients  = []
         query_zone  = Zone.objects.get(name=zone)
         all_zones   = recurs_zones(query_zone)
-        all_boards  = BoardTigi.objects.filter(zone__in=all_zones)
+        all_boards  = BoardManager.objects.filter(zone__in=all_zones)
 
         for board in all_boards.iterator():
             recipients.append(board.mobile)
@@ -172,6 +172,6 @@ class App (rapidsms.app.App):
         return recipients
 
     def outgoing (self, message):
-        # if info message ; down tigi credit by 10F
+        # if info message ; down manager credit by 10F
         pass
 
