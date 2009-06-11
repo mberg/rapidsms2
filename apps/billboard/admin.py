@@ -4,6 +4,7 @@ from models import BoardManager
 from models import Announcement
 from models import Zone
 from models import SysAdmin
+from models import Configuration
 from datetime import datetime
 
 class BoardManagerAdmin(admin.ModelAdmin):
@@ -41,3 +42,4 @@ admin.site.register(Zone)
 admin.site.register(SysAdmin, SysAdminAdmin)
 admin.site.register(BoardManager, BoardManagerAdmin)
 admin.site.register(Announcement, AnnouncementAdmin)
+admin.site.register(Configuration)

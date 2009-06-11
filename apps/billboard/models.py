@@ -13,6 +13,7 @@ class BoardManager(models.Model):
     name        = models.CharField(max_length=10, primary_key=True, db_index=True)
     mobile      = models.CharField(max_length=16, db_index=True, unique=True)
     credit      = models.IntegerField(default=0)
+    cost        = models.IntegerField("Board cost coef", default=1)
     active      = models.BooleanField(default=True)
     zone        = models.ForeignKey(Zone)
     
@@ -51,3 +52,17 @@ class SysAdmin(models.Model):
         except models.ObjectDoesNotExist:
             return None
 
+class Configuration(models.Model):
+    key     = models.CharField(max_length=16, primary_key=True)
+    value   = models.CharField(max_length=100)
+    
+    def __unicode__(self):
+        return self.key
+
+    @classmethod
+    def get_dictionary(cls):
+        dico    = {}
+        for conf in cls.objects.all():
+            dico[conf.key]  = eval(conf.value) # SECURITY: assume good faith?
+        return dico
+        

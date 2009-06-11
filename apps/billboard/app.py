@@ -43,12 +43,13 @@ def recurs_zones(zone):
 
 class App (rapidsms.app.App):
 
-    keyword         = Keyworder()
-    MAX_MSG_LEN     = 140
-    PRICE_PER_BOARD = 50
-    ADVERTISE_EXIT  = True
+    keyword = Keyworder()
+    config  = {'price_per_board': 25, \
+               'max_msg_len': 140, \
+               'send_exit_notif': True}
 
     def start (self):
+        self.config      = Configuration.get_dictionary()
         pass
 
     def parse (self, message):
@@ -99,14 +100,22 @@ class App (rapidsms.app.App):
         zone        = zone.lower()
         recipients  = self.recipients_from_zone(zone, message.peer)        
         self.group_send(message, recipients, _(u"Annonce (@%(sender)s): %(text)s") % {"text":text, 'sender':message.sender.name})
-        self.followup_new_announce(message, recipients.__len__())
+        self.followup_new_announce(message, recipients)
         return True
 
-    def followup_new_announce(self, message, recipient_nb):
-        price   = self.PRICE_PER_BOARD * int(recipient_nb)
+    def followup_new_announce(self, message, recipients):
+        price   = self.price_for_msg(recipients)
         message.sender.credit    -= price
         message.sender.save()
         message.respond(_(u"Merci, votre annonce a été envoyée (%(price)dF). Il vous reste %(credit)sF de crédit.") % {'price':price, 'credit':message.sender.credit})
+
+    def price_for_msg(self, message, recipients):
+        bulk    = self.config['price_per_board']
+        price   = 0
+        for recip in recipients:
+            bm      = BoardManager.by_mobile(recip)
+            price   += (bm.cost * bulk)
+        return price
 
     @keyword(r'stop')
     @authenticated
@@ -114,18 +123,18 @@ class App (rapidsms.app.App):
         message.sender.active   = False
         message.sender.save()
 
-        if self.ADVERTISE_EXIT:
+        if self.config['send_exit_notif']:
             recipients  = []
             all_active  = BoardManager.objects.filter(active=True)
             for board in all_active.iterator():
                 recipients.append(board.mobile)
             self.group_send(message, recipients, _(u"Info: @%(sender)s a quitté le réseau.") % {'sender':message.sender.name})
 
-        self.followup_stop_board(message, message.sender, recipients.__len__())
+        self.followup_stop_board(message, message.sender, recipients)
         return True
 
-    def followup_stop_board(self, message, manager, recipient_nb):
-        price   = self.PRICE_PER_BOARD * int(recipient_nb)
+    def followup_stop_board(self, message, manager, recipients):
+        price   = self.price_for_msg(recipients)
         manager.credit     -= price
         if manager.credit < 0:
             manager.credit = 0
@@ -142,7 +151,7 @@ class App (rapidsms.app.App):
         manager.active   = False
         manager.save()
 
-        if self.ADVERTISE_EXIT:
+        if self.config['send_exit_notif']:
             recipients  = []
             all_active  = BoardManager.objects.filter(active=True)
             for board in all_active.iterator():
