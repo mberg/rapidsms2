@@ -38,7 +38,10 @@ class AnnouncementAdmin(admin.ModelAdmin):
 class SysAdminAdmin(admin.ModelAdmin):
     list_display = ('name','mobile')
 
-admin.site.register(Zone)
+class ZoneAdmin(admin.ModelAdmin):
+    list_filter = ['zone']
+
+admin.site.register(Zone, ZoneAdmin)
 admin.site.register(SysAdmin, SysAdminAdmin)
 admin.site.register(BoardManager, BoardManagerAdmin)
 admin.site.register(Announcement, AnnouncementAdmin)

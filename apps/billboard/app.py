@@ -99,7 +99,7 @@ class App (rapidsms.app.App):
     def new_announce (self, message, zone, text):
         zone        = zone.lower()
         recipients  = self.recipients_from_zone(zone, message.peer)
-        price       = self.price_per_msg(message, recipients)
+        price       = self.price_for_msg(message, recipients)
         if message.sender.credit >= price:
             self.group_send(message, recipients, _(u"Annonce (@%(sender)s): %(text)s") % {"text":text, 'sender':message.sender.name})
             self.followup_new_announce(message, recipients)
@@ -108,7 +108,7 @@ class App (rapidsms.app.App):
         return True
 
     def followup_new_announce(self, message, recipients):
-        price   = self.price_for_msg(recipients)
+        price   = self.price_for_msg(message, recipients)
         message.sender.credit    -= price
         message.sender.save()
         message.respond(_(u"Merci, votre annonce a été envoyée (%(price)dF). Il vous reste %(credit)sF de crédit.") % {'price':price, 'credit':message.sender.credit})
