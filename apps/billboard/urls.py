@@ -10,6 +10,8 @@ except AttributeError:
     admin_urls = (r'^admin/(.*)', admin.site.root)
 
 urlpatterns = patterns('',
+    (r'^$', 'apps.billboard.views.index'),
+    (r'^zone_list\/?$', 'apps.billboard.views.zone_list'),
     admin_urls
 )
 

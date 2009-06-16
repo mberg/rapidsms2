@@ -46,7 +46,8 @@ class App (rapidsms.app.App):
     keyword = Keyworder()
     config  = {'price_per_board': 25, \
                'max_msg_len': 140, \
-               'send_exit_notif': True}
+               'send_exit_notif': True, \
+               'service_num': 000000}
 
     def start (self):
         self.config      = Configuration.get_dictionary()

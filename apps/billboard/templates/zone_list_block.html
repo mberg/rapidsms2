@@ -1,0 +1,16 @@
+{% if zone.c or zone.b %}
+    <h2>@{{ zone.n }}</h2>
+    <ul>
+    {% for child in zone.c %}
+        <li>@{{ child.n }}</li>
+    {% endfor %}
+    </ul>
+
+    {% if zone.b %}
+    <ul>
+    {% for b in zone.b %}
+        <li><strong>@{{ b.n }} ({{ b.p }}F)</strong>, {{ b.m }}</li>
+    {% endfor %}
+    </ul>
+    {% endif %}
+{% endif %}
