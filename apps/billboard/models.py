@@ -1,13 +1,15 @@
 # coding=utf-8
 
 from django.db import models
+from django.utils.translation import ugettext_lazy as _
 
 class Zone(models.Model):
     name        = models.CharField(max_length=10, unique=True)
-    zone        = models.ForeignKey('Zone', blank=True, null=True, related_name="related_zone")
+    full_name   = models.CharField(max_length=50, blank=True, null=True)
+    zone        = models.ForeignKey('Zone',verbose_name=_("Parent Zone"), blank=True, null=True, related_name="related_zone")
 
     def __unicode__(self):
-        return self.name
+        return self.full_name if not self.full_name == None else self.name
 
 class BoardManager(models.Model):
     name        = models.CharField(max_length=10, primary_key=True, db_index=True)
