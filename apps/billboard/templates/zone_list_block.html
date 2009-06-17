@@ -1,5 +1,5 @@
 {% if zone.c or zone.b %}
-    <h2>@{{ zone.n }}</h2>
+    <h2>@{{ zone.n }} ({{ zone.p }}F)</h2>
     <ul>
     {% for child in zone.c %}
         <li>@{{ child.n }}</li>
@@ -9,7 +9,7 @@
     {% if zone.b %}
     <ul>
     {% for b in zone.b %}
-        <li><strong>@{{ b.n }} ({{ b.p }}F)</strong>, {{ b.m }}</li>
+        <li><strong>@{{ b.n }} ({{ b.p }}F)</strong>, {{ b.m }}<p>{{ b.d|linebreaks }}</li>
     {% endfor %}
     </ul>
     {% endif %}

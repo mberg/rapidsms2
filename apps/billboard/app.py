@@ -1,4 +1,4 @@
-# coding=utf8
+# coding=utf-8
 
 import rapidsms
 from rapidsms.parsers.keyworder import Keyworder
@@ -6,18 +6,21 @@ from rapidsms.message import Message
 
 from ..orangeml.models import *
 from models import *
+from utils import *
 
 import re
 import unicodedata
+from django.utils.translation import ugettext
+from django.conf import settings
 
-def _(txt): return unicodedata.normalize('NFKD', txt).encode('ascii','ignore')
+def _(txt): return unicodedata.normalize('NFKD', ugettext(txt)).encode('ascii','ignore')
 
 def authenticated (func):
     def wrapper (self, message, *args):
         if message.sender:
             return func(self, message, *args)
         else:
-            message.respond(_(u"%s ne fait pas partie du réseau.") % message.peer)
+            message.respond(_(u"You (%(number)s) are not allowed to perform this action. Join the network to be able to.") % {'number': message.peer})
             return True
             #return False
     return wrapper
@@ -33,25 +36,19 @@ def sysadmin (func):
 class HandlerFailed (Exception):
     pass
 
-def recurs_zones(zone):
-    zonelist    = []
-    all_zones   = Zone.objects.filter(zone=zone)
-    for azone in all_zones.iterator():
-        zonelist += recurs_zones(azone)
-        zonelist.append(azone)
-    return zonelist
-
 class App (rapidsms.app.App):
 
     keyword = Keyworder()
     config  = {'price_per_board': 25, \
                'max_msg_len': 140, \
                'send_exit_notif': True, \
-               'service_num': 000000}
+               'service_num': 000000, \
+               'lang': 'en-us', \
+               'currency': '$'}
 
     def start (self):
         self.config      = Configuration.get_dictionary()
-        pass
+        settings.LANGUAGE_CODE  = self.config["lang"]
 
     def parse (self, message):
         try:
@@ -89,7 +86,7 @@ class App (rapidsms.app.App):
             message.respond(e.message)
             handled = True
         except Exception, e:
-            message.respond(_(u"Une erreur s'est produite. Contactez le 73120896."))
+            message.respond(_(u"An error has occured. Please, contact %(service_num)s for more informations." % {'service_num': self.config['service_num']}))
             raise
         message.was_handled = bool(handled)
         return handled
@@ -99,28 +96,20 @@ class App (rapidsms.app.App):
     @authenticated
     def new_announce (self, message, zone, text):
         zone        = zone.lower()
-        recipients  = self.recipients_from_zone(zone, message.peer)
-        price       = self.price_for_msg(message, recipients)
+        recipients  = recipients_from_zone(zone, message.peer)
+        price       = price_for_msg(recipients, self.config['price_per_board'])
         if message.sender.credit >= price:
-            self.group_send(message, recipients, _(u"Annonce (@%(sender)s): %(text)s") % {"text":text, 'sender':message.sender.name})
+            self.group_send(message, recipients, _(u"Announce (@%(sender)s): %(text)s") % {"text":text, 'sender':message.sender.name})
             self.followup_new_announce(message, recipients)
         else:
-            message.respond(_(u"Désolé, ce message nécessite %(price)dF de crédit. Votre est compte n'en possède que %(credit)sF. Rechargez votre compte puis réessayez.") % {'price':price, 'credit':message.sender.credit})
+            message.respond(_(u"Sorry, this message requires a %(price)d%(currency)s credit. You account balance is only %(credit)s%(currency)s. Top-up your account then retry.") % {'price':price, 'credit':message.sender.credit, 'currency': self.config['currency']})
         return True
 
     def followup_new_announce(self, message, recipients):
-        price   = self.price_for_msg(message, recipients)
+        price   = price_for_msg(recipients, self.config['price_per_board'])
         message.sender.credit    -= price
         message.sender.save()
-        message.respond(_(u"Merci, votre annonce a été envoyée (%(price)dF). Il vous reste %(credit)sF de crédit.") % {'price':price, 'credit':message.sender.credit})
-
-    def price_for_msg(self, message, recipients):
-        bulk    = self.config['price_per_board']
-        price   = 0
-        for recip in recipients:
-            bm      = BoardManager.by_mobile(recip)
-            price   += (bm.cost * bulk)
-        return price
+        message.respond(_(u"Thanks, your announce has been sent (%(price)d%(currency)s). Your balance is now %(credit)s%(currency)s.") % {'price':price, 'credit':message.sender.credit, 'currency': self.config['currency']})
 
     @keyword(r'stop')
     @authenticated
@@ -134,25 +123,25 @@ class App (rapidsms.app.App):
             all_active  = BoardManager.objects.filter(active=True)
             for board in all_active.iterator():
                 recipients.append(board.mobile)
-            self.group_send(message, recipients, _(u"Info: @%(sender)s a quitté le réseau.") % {'sender':message.sender.name})
+            self.group_send(message, recipients, _(u"Info: @%(sender)s has left the network.") % {'sender':message.sender.name})
 
         self.followup_stop_board(message, message.sender, recipients)
         return True
 
     def followup_stop_board(self, message, manager, recipients):
-        price   = self.price_for_msg(recipients)
+        price   = price_for_msg(recipients, self.config['price_per_board'])
         manager.credit     -= price
         if manager.credit < 0:
             manager.credit = 0
         manager.save()
-        message.forward(manager.mobile, _(u"Vous avez quitté le réseau. Votre crédit (si vous souhaitez revenir) est de %(credit)sF. Au revoir.") % {'credit':manager.credit})
+        message.forward(manager.mobile, _(u"You have now left the network. Your balance, shall you come back, is %(credit)s%(currency)s. Good bye.") % {'credit':manager.credit, 'currency': self.config['currency']})
 
     @keyword(r'stop \@(\w+)')
     @sysadmin
     def stop_board (self, message, name):
         manager    = BoardManager.objects.get(name=name)
         if not manager.active: # already off
-            message.respond(_(u"@%(manager)s ne fait pas partie du réseau.") % {'manager':manager.name})
+            message.respond(_(u"@%(manager)s is not part in the network") % {'manager':manager.name})
             return True
         manager.active   = False
         manager.save()
@@ -163,7 +152,7 @@ class App (rapidsms.app.App):
             all_active  = BoardManager.objects.filter(active=True)
             for board in all_active.iterator():
                 recipients.append(board.mobile)
-            self.group_send(message, recipients, _(u"Info: @%(sender)s a quitté le réseau.") % {'sender':manager.name})
+            self.group_send(message, recipients, _(u"Info: @%(sender)s has left the network.") % {'sender':manager.name})
 
         self.followup_stop_board(message, manager, recipients.__len__())
         return True
@@ -172,20 +161,6 @@ class App (rapidsms.app.App):
         for number in recipients:
             message.forward(number, text)
         pass
-
-    def recipients_from_zone(self, zone, exclude=None):     
-        recipients  = []
-        query_zone  = Zone.objects.get(name=zone)
-        all_zones   = recurs_zones(query_zone)
-        all_boards  = BoardManager.objects.filter(zone__in=all_zones)
-
-        for board in all_boards.iterator():
-            recipients.append(board.mobile)
-
-        if not exclude == None:
-            recipients.remove(exclude)
-
-        return recipients
 
     def outgoing (self, message):
         # if info message ; down manager credit by 10F

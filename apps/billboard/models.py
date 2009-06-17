@@ -1,4 +1,4 @@
-# coding=utf8
+# coding=utf-8
 
 from django.db import models
 
@@ -16,6 +16,7 @@ class BoardManager(models.Model):
     cost        = models.IntegerField("Board cost coef", default=1)
     active      = models.BooleanField(default=True)
     zone        = models.ForeignKey(Zone)
+    details     = models.TextField()
     
     def __unicode__(self):
         return self.name
@@ -63,6 +64,9 @@ class Configuration(models.Model):
     def get_dictionary(cls):
         dico    = {}
         for conf in cls.objects.all():
-            dico[conf.key]  = eval(conf.value) # SECURITY: assume good faith?
+            try:
+                dico[conf.key]  = eval(conf.value) # SECURITY: assume good faith?
+            except NameError:
+                dico[conf.key]  = conf.value
         return dico
         

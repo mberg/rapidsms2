@@ -1,0 +1,76 @@
+# Billboard french lang.
+# Copyright (C) 2009 reg
+# This file is distributed under the same license as the billboard package.
+# reg <rgaudin@gmail.com>, 2009.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: billboard 0.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2009-06-17 12:43+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: reg <rgaudin@gmail.com>\n"
+"Language-Team: fr <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: app.py:23
+#, python-format
+msgid ""
+"You (%(number)s) are not allowed to perform this action. Join the network to "
+"be able to."
+msgstr ""
+"Vous (%(number)s) n'avez pas l'authorisation pour cette action. Rejoignez le "
+"réseau pour ce faire."
+
+#: app.py:89
+#, python-format
+msgid ""
+"An error has occured. Please, contact %(service_num)s for more informations."
+msgstr ""
+"Une erreur s'est produite. Contactez le %(service_num)s pour plus "
+"d'informations."
+
+#: app.py:102
+#, python-format
+msgid "Announce (@%(sender)s): %(text)s"
+msgstr "Annonce (@%(sender)s): %(text)s"
+
+#: app.py:105
+#, python-format
+msgid ""
+"Sorry, this message requires a %(price)d%(currency)s credit. You account "
+"balance is only %(credit)s%(currency)s. Top-up your account then retry."
+msgstr ""
+"Désolé, ce message nécessite %(price)d%(currency)s de crédit. Votre compte "
+"n'est que de %(credit)s%(currency)s. Rechargez puis réessayez."
+
+#: app.py:112
+#, python-format
+msgid ""
+"Thanks, your announce has been sent (%(price)d%(currency)s). Your balance is "
+"now %(credit)s%(currency)s."
+msgstr ""
+"Merci, votre annonce a été envoyée (%(price)d%(currency)s). Votre crédit est "
+"maintenant de %(credit)s%(currency)s."
+
+#: app.py:126 app.py:155
+#, python-format
+msgid "Info: @%(sender)s has left the network."
+msgstr "Info: @%(sender)s a quitté le réseau."
+
+#: app.py:137
+#, python-format
+msgid ""
+"You have now left the network. Your balance, shall you come back, is %"
+"(credit)s%(currency)s. Good bye."
+msgstr ""
+"Vous venez de quitter le réseau. Votre crédit (si vous souhaitez revenir) "
+"est de %(credit)s%(currency)s. Au revoir."
+
+#: app.py:144
+#, fuzzy, python-format
+msgid "@%(manager)s is not part in the network"
+msgstr "@%(manager)s ne fait pas partie du réseau."
