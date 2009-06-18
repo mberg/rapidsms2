@@ -12,16 +12,20 @@ class Zone(models.Model):
         return self.full_name if not self.full_name == None else self.name
 
 class BoardManager(models.Model):
-    name        = models.CharField(max_length=10, primary_key=True, db_index=True)
+    name        = models.CharField(_("Alias"),max_length=10, primary_key=True, db_index=True)
+    full_name   = models.CharField(max_length=50,blank=True,null=True)
     mobile      = models.CharField(max_length=16, db_index=True, unique=True)
     credit      = models.IntegerField(default=0)
-    cost        = models.IntegerField("Board cost coef", default=1)
+    cost        = models.IntegerField(_("Rating"), default=1)
     active      = models.BooleanField(default=True)
     zone        = models.ForeignKey(Zone)
+    latitude    = models.CharField(_('Latitude'), max_length=25, blank=True, null=True)
+    longitude   = models.CharField(_('Longitude'), max_length=25, blank=True, null=True)
+    picture     = models.ImageField(_('Picture'),upload_to='board_pics')
     details     = models.TextField()
     
     def __unicode__(self):
-        return self.name
+        return u'%(full)s (%(short)s)' % {'full':self.full_name, 'short': self.name} if not self.full_name == None else self.name
 
     @classmethod
     def by_mobile (cls, mobile):

@@ -13,10 +13,19 @@ class BoardManagerAdmin(admin.ModelAdmin):
     class Meta:
         ordering = ["name"]
 
-    list_display = ('name', 'mobile', 'credit', 'zone', 'active')
+    list_display = ('__unicode__', 'name', 'mobile', 'credit', 'zone', 'active')
     list_filter = ['zone','credit','active']
     search_fields = ['name','mobile']
     actions =  actions = ['delete_selected','make_activated']
+    fieldsets = (
+        (None, {
+            'fields': ('full_name', 'name', 'mobile', 'credit', 'active', 'picture')
+        }),
+        ('Location', {
+            'classes': ('collapse',),
+            'fields': ('zone', ('latitude', 'longitude'))
+        }),
+    )
 
     def make_activated(self, request, queryset):
         rows_updated = queryset.update(active=True)
