@@ -27,7 +27,7 @@ def authenticated (func):
 
 def sysadmin (func):
     def wrapper (self, message, *args):
-        if SysAdmin.granted(message.peer):
+        if Member.is_admin(message.sender):
             return func(self, message, *args)
         else:
             return False
@@ -56,7 +56,7 @@ class App (rapidsms.app.App):
         except Exception:
             pass
         
-        manager = BoardManager.by_mobile(message.peer)
+        manager = Member.by_mobile(message.peer)
         if manager:
             message.sender = manager
         else:
@@ -66,7 +66,7 @@ class App (rapidsms.app.App):
         try: # message is credit from orangeml
             if message.transaction:
                 transaction = Transaction.objects.get(id=message.transaction)
-                manager     = BoardManager.by_mobile(transaction.mobile)
+                manager     = Member.by_mobile(transaction.mobile)
                 manager.credit+= transaction.amount
                 manager.save()
                 transaction.delete()
@@ -120,7 +120,7 @@ class App (rapidsms.app.App):
         # we charge the manager if he has credit but don't prevent sending if he hasn't.
         if self.config['send_exit_notif']:
             recipients  = []
-            all_active  = BoardManager.objects.filter(active=True)
+            all_active  = Member.objects.filter(membership=MemberType.objects.get(code='board'),active=True)
             for board in all_active.iterator():
                 recipients.append(board.mobile)
             self.group_send(message, recipients, _(u"Info: @%(sender)s has left the network.") % {'sender':message.sender.name})
@@ -139,9 +139,9 @@ class App (rapidsms.app.App):
     @keyword(r'stop \@(\w+)')
     @sysadmin
     def stop_board (self, message, name):
-        manager    = BoardManager.objects.get(name=name)
+        manager    = Member.objects.get(alias=name)
         if not manager.active: # already off
-            message.respond(_(u"@%(manager)s is not part in the network") % {'manager':manager.name})
+            message.respond(_(u"@%(manager)s is not part in the network") % {'manager':manager.alias})
             return True
         manager.active   = False
         manager.save()
@@ -149,10 +149,10 @@ class App (rapidsms.app.App):
         # we charge the manager if he has credit but don't prevent sending if he hasn't.
         if self.config['send_exit_notif']:
             recipients  = []
-            all_active  = BoardManager.objects.filter(active=True)
+            all_active  = Member.objects.filter(membership=MemberType.objects.get(code='board'),active=True)
             for board in all_active.iterator():
                 recipients.append(board.mobile)
-            self.group_send(message, recipients, _(u"Info: @%(sender)s has left the network.") % {'sender':manager.name})
+            self.group_send(message, recipients, _(u"Info: @%(sender)s has left the network.") % {'sender':manager.alias})
 
         self.followup_stop_board(message, manager, recipients.__len__())
         return True

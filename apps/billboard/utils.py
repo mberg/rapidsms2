@@ -6,7 +6,7 @@ def recipients_from_zone(zone, exclude=None):
     recipients  = []
     query_zone  = Zone.objects.get(name=zone)
     all_zones   = recurs_zones(query_zone)
-    all_boards  = BoardManager.objects.filter(zone__in=all_zones)
+    all_boards  = Member.objects.filter(membership=MemberType.objects.get(code='board'),zone__in=all_zones)
 
     for board in all_boards.iterator():
         recipients.append(board.mobile)
@@ -28,6 +28,6 @@ def recurs_zones(zone):
 def price_for_msg(recipients, bulk):
     price   = 0
     for recip in recipients:
-        bm      = BoardManager.by_mobile(recip)
-        price   += (bm.cost * bulk)
+        bm      = Member.by_mobile(recip)
+        price   += (bm.rating * bulk)
     return price
