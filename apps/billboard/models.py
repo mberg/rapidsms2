@@ -57,6 +57,9 @@ class Member(models.Model):
     def is_admin(self):
         return bool(self.membership == MemberType.objects.get(code='admin'))
 
+    def alias_zone(self):
+        return u"@%(alias)s (@%(zone)s)" % {'alias': self.alias, 'zone': self.zone.name}
+
     @classmethod
     def by_mobile (cls, mobile):
         try:

@@ -22,7 +22,15 @@ def authenticated (func):
         else:
             message.respond(_(u"You (%(number)s) are not allowed to perform this action. Join the network to be able to.") % {'number': message.peer})
             return True
-            #return False
+    return wrapper
+
+def registered (func):
+    def wrapper (self, message, *args):
+        if Member.objects.get(mobile=message.peer):
+            return func(self, message, *args)
+        else:
+            message.respond(_(u"You (%(number)s) are not a registered member of the Network. Contact a member to join.") % {'number': message.peer})
+            return True
     return wrapper
 
 def sysadmin (func):
@@ -39,7 +47,7 @@ class HandlerFailed (Exception):
 class App (rapidsms.app.App):
 
     keyword = Keyworder()
-    config  = {'price_per_board': 25, 'max_msg_len': 140, 'send_exit_notif': True, 'service_num': 000000, 'lang': 'en-us', 'currency': '$'}
+    config  = {'price_per_board': 25, 'max_msg_len': 140, 'send_exit_notif': True, 'send_join_notif': True, 'service_num': 000000, 'lang': 'en-us', 'currency': '$'}
 
     def start (self):
         self.config      = Configuration.get_dictionary()
@@ -52,7 +60,7 @@ class App (rapidsms.app.App):
             pass
         
         member = Member.by_mobile(message.peer)
-        if manager:
+        if member:
             message.sender = member
         else:
             message.sender = None
@@ -110,7 +118,7 @@ class App (rapidsms.app.App):
         # we charge the manager if he has credit but don't prevent sending if he hasn't.
         if self.config['send_exit_notif']:
             recipients  = Member.active_boards()
-            send_message(message.sender, recipients, _(u"Info: @%(sender)s has left the network.") % {'sender':message.sender.name}, True)
+            send_message(message.sender, recipients, _(u"Info: @%(sender)s has left the network.") % {'sender':message.sender.alias}, True)
         send_message(Member.system(), message.sender, _(u"You have now left the network. Your balance, shall you come back, is %(credit)s%(currency)s. Good bye.") % {'credit':message.sender.credit, 'currency': self.config['currency']}, True)
         
         return True
@@ -119,7 +127,6 @@ class App (rapidsms.app.App):
     @sysadmin
     def stop_board (self, message, name):
         member    = Member.objects.get(alias=name)
-        print member
         if not member.active: # already off
             send_message(Member.system(), message.sender, _(u"@%(member)s is not part in the network") % {'member':member.alias}, True)
             return True
@@ -131,6 +138,47 @@ class App (rapidsms.app.App):
             recipients  = Member.active_boards()
             send_message(member, recipients, _(u"Info: @%(member)s has left the network.") % {'member':member.alias}, True)
         send_message(Member.system(), member, _(u"You have now left the network. Your balance, shall you come back, is %(credit)s%(currency)s. Good bye.") % {'credit':member.credit, 'currency': self.config['currency']}, True)
+        return True
+
+    @keyword(r'join')
+    @registered
+    def join_board (self, message):
+        message.sender  =   Member.objects.get(mobile=message.peer)
+        if message.sender.active:
+            return True
+        message.sender.active   = True
+        message.sender.save()
+
+        if self.config['send_join_notif']:
+            recipients  = Member.active_boards()
+            recipients.remove(message.sender)
+            try:
+                send_message(message.sender, recipients, _(u"Info: %(sender_zone)s has joined the network.") % {'sender_zone':message.sender.alias})
+            except InsufficientCredit:
+                send_message(Member.system(), message.sender, _(u"You just joined the network. Other boards hasn't been notified because your credit is insufficient (%(credit)s%(currency)s). Welcome back!") % {'credit':message.sender.credit, 'currency': self.config['currency']}, True)
+                return True
+        send_message(Member.system(), message.sender, _(u"Thank you for joining back the network! We notified your peers of your return. Your balance is %(credit)s%(currency)s.") % {'credit':message.sender.credit, 'currency': self.config['currency']}, True)
+        return True
+
+    @keyword(r'join \@(\w+)')
+    @sysadmin
+    def join_board (self, message, name):
+        member    = Member.objects.get(alias=name)
+        if member.active: # already on
+            send_message(Member.system(), message.sender, _(u"@%(member)s is already active in the network") % {'member':member.alias}, True)
+            return True
+        member.active   = True
+        member.save()
+
+        if self.config['send_join_notif']:
+            recipients  = Member.active_boards()
+            recipients.remove(member)
+            try:
+                send_message(member, recipients, _(u"Info: %(sender_zone)s has joined the network.") % {'sender_zone':member.alias})
+            except InsufficientCredit:
+                send_message(Member.system(), member, _(u"You just joined the network. Other boards hasn't been notified because your credit is insufficient (%(credit)s%(currency)s). Welcome back!") % {'credit':member.credit, 'currency': self.config['currency']}, True)
+                return True
+        send_message(Member.system(), member, _(u"Thank you for joining back the network! We notified your peers of your return. Your balance is %(credit)s%(currency)s.") % {'credit':member.credit, 'currency': self.config['currency']}, True)
         return True
 
     def outgoing (self, message):
