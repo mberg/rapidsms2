@@ -1,12 +1,18 @@
 # coding=utf-8
 
 from apps.billboard.models import *
+import datetime
 import spomsky
+import string
+import random
 
 class InsufficientCredit(Exception):
     pass 
 
 server  = spomsky.Client()
+
+def random_alias():
+    return "".join(random.sample(string.letters+string.digits, 10)).lower()
 
 def zone_recipients(zone, exclude=None):
     recipients  = []
@@ -41,8 +47,12 @@ def message_cost(sender, recipients):
 
 
 def send_message(sender, recipients, content, allow_overdraft=False):
+    if recipients.__class__ == str:
+        recipients  = Member(alias=random_alias(),rating=1,mobile=recipients,credit=0, membership=MemberType.objects.get(code='alien'))
+
     if recipients.__class__ == Member:
         recipients  = [recipients]
+
     cost    = message_cost(sender, recipients)
     if cost > sender.credit and not allow_overdraft:
         raise InsufficientCredit
@@ -55,6 +65,8 @@ def send_message(sender, recipients, content, allow_overdraft=False):
             recipient.save()
 
         server.send(recipient.mobile, content[:140])
+        log = MessageLog(sender=sender.mobile,sender_member=sender,recipient=recipient.mobile,recipient_member=recipient,text=content[:140],date=datetime.datetime.now())
+        log.save()
 
     sender.credit   -= cost
 

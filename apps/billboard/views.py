@@ -15,7 +15,7 @@ def zone_list(request):
 
     tree    = []
     def zone_fill(tree, zone):
-        dumb_board  = Member(alias='xxxxxxxxxxxxxxxxxx',rating=1,mobile='000000',credit=10000, membership=MemberType.objects.get(code='board'))
+        dumb_board  = Member(alias=random_alias(),rating=1,mobile='000000',credit=0, membership=MemberType.objects.get(code='board'))
         tlz     = Zone.objects.filter(zone=zone)    
         for z in tlz:
             recipients  = zone_recipients(z.name, None)

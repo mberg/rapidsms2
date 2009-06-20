@@ -78,7 +78,7 @@ class Member(models.Model):
         for b in ab:
             ba.append(b)
         return ba
-
+"""
 class Announcement(models.Model):
     sender      = models.ForeignKey("Member", related_name="%(class)s_related_sender")
     recipients  = models.ManyToManyField("Member", related_name="%(class)s_related_recipients")
@@ -89,6 +89,36 @@ class Announcement(models.Model):
 
     def __unicode__(self):
         return "%s (%s)" % (self.sender, self.date.strftime("%c"))
+"""
+"""
+class ActionType(models.Model):
+    code        = models.CharField(max_length=10,primary_key=True)
+    name        = models.CharField(max_length=30)
+
+    def __unicode__(self):
+        return self.name
+
+class Actions(models.Model):
+    kind        = models.ForeignKey("ActionType")
+    sender      = models.ForeignKey("Member", related_name="%(class)s_related_sender")
+    recipients  = models.ManyToManyField("Member", related_name="%(class)s_related_recipients")
+    text        = models.CharField(max_length=140)
+    date        = models.DateTimeField()
+    cost        = models.IntegerField(default=0)
+    tags        = 
+"""
+class MessageLog(models.Model):
+    sender      = models.CharField(max_length=16)
+    sender_member   =  models.ForeignKey("Member", blank=True, null=True, related_name="%(class)s_related_sender")
+    recipient   = models.CharField(max_length=16)
+    recipient_member=  models.ForeignKey("Member", blank=True, null=True, related_name="%(class)s_related_recipients")
+    text        = models.CharField(max_length=140)
+    date        = models.DateTimeField()
+
+    def __unicode__(self):
+        sender      = self.sender_member.alias if self.sender_member else self.sender
+        recipient   = self.recipient_member.alias if self.recipient_member else self.recipient
+        return u"%(sender)s -> %(recipient)s: %(text)s" % {'sender': sender, 'recipient':recipient, 'text':self.text[:20]}
 
 class Configuration(models.Model):
     key     = models.CharField(max_length=16, primary_key=True)

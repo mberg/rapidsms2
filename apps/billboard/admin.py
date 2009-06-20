@@ -26,7 +26,7 @@ class MemberUserAdmin(UserAdmin):
     )
     inlines     = (MemberInline,)
     list_filter = ['is_active']
-
+"""
 class AnnouncementAdmin(admin.ModelAdmin):
 
     class Meta:
@@ -35,12 +35,19 @@ class AnnouncementAdmin(admin.ModelAdmin):
     list_display = ('sender', 'date', 'price','sent')
     list_filter = ['sender','date','sent']
     search_fields = ['sender','text','recipients']
+"""
 
 class ZoneAdmin(admin.ModelAdmin):
     list_filter = ['zone']
 
 class MemberTypeAdmin(admin.ModelAdmin):
     pass
+
+class MessageLogAdmin(admin.ModelAdmin):
+    list_display    = ('__unicode__', 'date')
+    list_filter     = ['date','sender']
+    ordering = ('-date',)
+
 
 class MemberAdmin(admin.ModelAdmin):
     list_display    = ('__unicode__', 'alias', 'mobile', 'membership', 'credit', 'rating', 'zone', 'active')
@@ -65,8 +72,9 @@ except admin.sites.NotRegistered:
     pass
 admin.site.register(User, MemberUserAdmin)
 
+admin.site.register(MessageLog, MessageLogAdmin)
 admin.site.register(MemberType, MemberTypeAdmin)
 admin.site.register(Member, MemberAdmin)
 admin.site.register(Zone, ZoneAdmin)
-admin.site.register(Announcement, AnnouncementAdmin)
+#admin.site.register(Announcement, AnnouncementAdmin)
 admin.site.register(Configuration)

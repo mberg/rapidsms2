@@ -20,7 +20,7 @@ def authenticated (func):
         if message.sender:
             return func(self, message, *args)
         else:
-            message.respond(_(u"You (%(number)s) are not allowed to perform this action. Join the network to be able to.") % {'number': message.peer})
+            send_message(Member.system(), message.peer, _(u"You (%(number)s) are not allowed to perform this action. Join the network to be able to.") % {'number': message.peer}, True)
             return True
     return wrapper
 
@@ -29,7 +29,7 @@ def registered (func):
         if Member.objects.get(mobile=message.peer):
             return func(self, message, *args)
         else:
-            message.respond(_(u"You (%(number)s) are not a registered member of the Network. Contact a member to join.") % {'number': message.peer})
+            send_message(Member.system(), message.peer, _(u"You (%(number)s) are not a registered member of the Network. Contact a member to join.") % {'number': message.peer}, True)
             return True
     return wrapper
 
@@ -81,17 +81,22 @@ class App (rapidsms.app.App):
             func, captures = self.keyword.match(self, message.text)
         except TypeError:
             # didn't find a matching function
-            # message.respond(_("Unknown or incorrectly formed command: %(msg)s... Please call 999-9999") % {"msg":message.text[:10]})
+            # send_message(Member.system(), message.peer, _("Unknown or incorrectly formed command: %(msg)s... Please call 999-9999") % {"msg":message.text[:10]}, True)
             return False
         try:
             handled = func(self, message, *captures)
         except HandlerFailed, e:
-            message.respond(e.message)
+            send_message(Member.system(), message.peer, e.message, True)
             handled = True
         except Exception, e:
-            message.respond(_(u"An error has occured. Please, contact %(service_num)s for more informations." % {'service_num': self.config['service_num']}))
+            send_message(Member.system(), message.peer, _(u"An error has occured. Please, contact %(service_num)s for more informations.") % {'service_num': self.config['service_num']}, True)
             raise
         message.was_handled = bool(handled)
+        if message.was_handled:
+            log = MessageLog(sender=message.peer,recipient=Member.system().mobile,recipient_member=Member.system(),text=message.text[:140],date=datetime.datetime.now())
+            if message.sender:
+                log.sender_member   = message.sender
+            log.save()
         return handled
 
 
