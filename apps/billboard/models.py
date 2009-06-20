@@ -39,6 +39,9 @@ class Member(models.Model):
     details     = models.TextField(blank=True)
 
     def __unicode__(self):
+        return self.display_name()
+
+    def display_name(self):
         if self.name != None:
             front   = self.name
         else:
@@ -48,6 +51,12 @@ class Member(models.Model):
                 return self.alias
         return u'%(front)s (%(alias)s)' % {'front': front, 'alias': self.alias}
 
+    def is_board(self):
+        return bool(self.membership == MemberType.objects.get(code='board'))
+
+    def is_admin(self):
+        return bool(self.membership == MemberType.objects.get(code='admin'))
+
     @classmethod
     def by_mobile (cls, mobile):
         try:
@@ -56,11 +65,16 @@ class Member(models.Model):
             return None
 
     @classmethod
-    def is_admin(cls, mobile):
-        try:
-            return cls.objects.get(mobile=mobile,membership=MemberType.objects.get(code='admin'))
-        except models.ObjectDoesNotExist:
-            return None
+    def system(cls):
+        return cls.objects.get(alias='sys')
+
+    @classmethod
+    def active_boards(cls):
+        ba  = []        
+        ab  = cls.objects.filter(membership=MemberType.objects.get(code='board'),active=True)
+        for b in ab:
+            ba.append(b)
+        return ba
 
 class Announcement(models.Model):
     sender      = models.ForeignKey("Member", related_name="%(class)s_related_sender")

@@ -15,16 +15,17 @@ def zone_list(request):
 
     tree    = []
     def zone_fill(tree, zone):
+        dumb_board  = Member(alias='xxxxxxxxxxxxxxxxxx',rating=1,mobile='000000',credit=10000, membership=MemberType.objects.get(code='board'))
         tlz     = Zone.objects.filter(zone=zone)    
         for z in tlz:
-            recipients  = recipients_from_zone(z.name, None)
-            price       = price_for_msg(recipients, msg_price)
+            recipients  = zone_recipients(z.name, None)
+            price       = message_cost(dumb_board, recipients)
             zo      = {'n': z.name, 'p': price}
             zo['c'] = []
             zo['b'] = []
-            bb      = BoardManager.objects.filter(zone=z)
+            bb      = Member.objects.filter(zone=z,membership=MemberType.objects.get(code='board'),active=True)
             for board in bb:
-                bo  = {'n': board.name, 'c': board.cost, 'p': board.cost * msg_price, 'm': board.mobile, 'd': board.details}
+                bo  = {'n': board.display_name(), 'c': board.rating, 'p': board.rating * msg_price, 'm': board.mobile, 'd': board.details}
                 zo['b'].append(bo)
             zone_fill(zo['c'], z)
             tree.append(zo)

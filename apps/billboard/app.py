@@ -27,7 +27,7 @@ def authenticated (func):
 
 def sysadmin (func):
     def wrapper (self, message, *args):
-        if Member.is_admin(message.sender):
+        if message.sender.is_admin():
             return func(self, message, *args)
         else:
             return False
@@ -39,12 +39,7 @@ class HandlerFailed (Exception):
 class App (rapidsms.app.App):
 
     keyword = Keyworder()
-    config  = {'price_per_board': 25, \
-               'max_msg_len': 140, \
-               'send_exit_notif': True, \
-               'service_num': 000000, \
-               'lang': 'en-us', \
-               'currency': '$'}
+    config  = {'price_per_board': 25, 'max_msg_len': 140, 'send_exit_notif': True, 'service_num': 000000, 'lang': 'en-us', 'currency': '$'}
 
     def start (self):
         self.config      = Configuration.get_dictionary()
@@ -56,9 +51,9 @@ class App (rapidsms.app.App):
         except Exception:
             pass
         
-        manager = Member.by_mobile(message.peer)
+        member = Member.by_mobile(message.peer)
         if manager:
-            message.sender = manager
+            message.sender = member
         else:
             message.sender = None
 
@@ -66,9 +61,9 @@ class App (rapidsms.app.App):
         try: # message is credit from orangeml
             if message.transaction:
                 transaction = Transaction.objects.get(id=message.transaction)
-                manager     = Member.by_mobile(transaction.mobile)
-                manager.credit+= transaction.amount
-                manager.save()
+                member     = Member.by_mobile(transaction.mobile)
+                member.credit+= transaction.amount
+                member.save()
                 transaction.delete()
                 return True
         except AttributeError:
@@ -96,20 +91,15 @@ class App (rapidsms.app.App):
     @authenticated
     def new_announce (self, message, zone, text):
         zone        = zone.lower()
-        recipients  = recipients_from_zone(zone, message.peer)
-        price       = price_for_msg(recipients, self.config['price_per_board'])
-        if message.sender.credit >= price:
-            self.group_send(message, recipients, _(u"Announce (@%(sender)s): %(text)s") % {"text":text, 'sender':message.sender.name})
-            self.followup_new_announce(message, recipients)
-        else:
-            message.respond(_(u"Sorry, this message requires a %(price)d%(currency)s credit. You account balance is only %(credit)s%(currency)s. Top-up your account then retry.") % {'price':price, 'credit':message.sender.credit, 'currency': self.config['currency']})
-        return True
+        recipients  = zone_recipients(zone, message.sender)
+        price       = message_cost(message.sender, recipients)
+        try:
+            send_message(message.sender, recipients, _(u"Announce (@%(sender)s): %(text)s") % {"text":text, 'sender':message.sender.name})
+        except InsufficientCredit:
+            send_message(Member.system(), message.sender, _(u"Sorry, this message requires a %(price)d%(currency)s credit. You account balance is only %(credit)s%(currency)s. Top-up your account then retry.") % {'price':price, 'credit':message.sender.credit, 'currency': self.config['currency']}, True)
 
-    def followup_new_announce(self, message, recipients):
-        price   = price_for_msg(recipients, self.config['price_per_board'])
-        message.sender.credit    -= price
-        message.sender.save()
-        message.respond(_(u"Thanks, your announce has been sent (%(price)d%(currency)s). Your balance is now %(credit)s%(currency)s.") % {'price':price, 'credit':message.sender.credit, 'currency': self.config['currency']})
+        send_message(Member.system(), message.sender, _(u"Thanks, your announce has been sent (%(price)d%(currency)s). Your balance is now %(credit)s%(currency)s.") % {'price':price, 'credit':message.sender.credit, 'currency': self.config['currency']}, True)
+        return True
 
     @keyword(r'stop')
     @authenticated
@@ -119,48 +109,29 @@ class App (rapidsms.app.App):
 
         # we charge the manager if he has credit but don't prevent sending if he hasn't.
         if self.config['send_exit_notif']:
-            recipients  = []
-            all_active  = Member.objects.filter(membership=MemberType.objects.get(code='board'),active=True)
-            for board in all_active.iterator():
-                recipients.append(board.mobile)
-            self.group_send(message, recipients, _(u"Info: @%(sender)s has left the network.") % {'sender':message.sender.name})
-
-        self.followup_stop_board(message, message.sender, recipients)
+            recipients  = Member.active_boards()
+            send_message(message.sender, recipients, _(u"Info: @%(sender)s has left the network.") % {'sender':message.sender.name}, True)
+        send_message(Member.system(), message.sender, _(u"You have now left the network. Your balance, shall you come back, is %(credit)s%(currency)s. Good bye.") % {'credit':message.sender.credit, 'currency': self.config['currency']}, True)
+        
         return True
-
-    def followup_stop_board(self, message, manager, recipients):
-        price   = price_for_msg(recipients, self.config['price_per_board'])
-        manager.credit     -= price
-        if manager.credit < 0:
-            manager.credit = 0
-        manager.save()
-        message.forward(manager.mobile, _(u"You have now left the network. Your balance, shall you come back, is %(credit)s%(currency)s. Good bye.") % {'credit':manager.credit, 'currency': self.config['currency']})
 
     @keyword(r'stop \@(\w+)')
     @sysadmin
     def stop_board (self, message, name):
-        manager    = Member.objects.get(alias=name)
-        if not manager.active: # already off
-            message.respond(_(u"@%(manager)s is not part in the network") % {'manager':manager.alias})
+        member    = Member.objects.get(alias=name)
+        print member
+        if not member.active: # already off
+            send_message(Member.system(), message.sender, _(u"@%(member)s is not part in the network") % {'member':member.alias}, True)
             return True
-        manager.active   = False
-        manager.save()
+        member.active   = False
+        member.save()
 
         # we charge the manager if he has credit but don't prevent sending if he hasn't.
         if self.config['send_exit_notif']:
-            recipients  = []
-            all_active  = Member.objects.filter(membership=MemberType.objects.get(code='board'),active=True)
-            for board in all_active.iterator():
-                recipients.append(board.mobile)
-            self.group_send(message, recipients, _(u"Info: @%(sender)s has left the network.") % {'sender':manager.alias})
-
-        self.followup_stop_board(message, manager, recipients.__len__())
+            recipients  = Member.active_boards()
+            send_message(member, recipients, _(u"Info: @%(member)s has left the network.") % {'member':member.alias}, True)
+        send_message(Member.system(), member, _(u"You have now left the network. Your balance, shall you come back, is %(credit)s%(currency)s. Good bye.") % {'credit':member.credit, 'currency': self.config['currency']}, True)
         return True
-
-    def group_send(self, message, recipients, text):
-        for number in recipients:
-            message.forward(number, text)
-        pass
 
     def outgoing (self, message):
         # if info message ; down manager credit by 10F
