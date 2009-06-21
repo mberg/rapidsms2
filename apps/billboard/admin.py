@@ -66,6 +66,18 @@ class MemberAdmin(admin.ModelAdmin):
             message_bit = "%s members were" % rows_updated
         self.message_user(request, "%s successfully activated." % message_bit)
 
+class ActionTypeAdmin(admin.ModelAdmin):
+    pass
+
+class ActionAdmin(admin.ModelAdmin):
+    list_display    = ('__unicode__', 'date', 'cost','targets')
+    list_filter     = ['date','kind']
+    ordering = ('-id',)
+
+class TagAdmin(admin.ModelAdmin):
+    pass
+
+# registrations
 try:
     admin.site.unregister(User)
 except admin.sites.NotRegistered:
@@ -76,5 +88,7 @@ admin.site.register(MessageLog, MessageLogAdmin)
 admin.site.register(MemberType, MemberTypeAdmin)
 admin.site.register(Member, MemberAdmin)
 admin.site.register(Zone, ZoneAdmin)
-#admin.site.register(Announcement, AnnouncementAdmin)
 admin.site.register(Configuration)
+admin.site.register(ActionType, ActionTypeAdmin)
+admin.site.register(Action, ActionAdmin)
+admin.site.register(Tag, TagAdmin)

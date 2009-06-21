@@ -10,6 +10,7 @@ class InsufficientCredit(Exception):
     pass 
 
 server  = spomsky.Client()
+config  = Configuration.get_dictionary()
 
 def random_alias():
     return "".join(random.sample(string.letters+string.digits, 10)).lower()
@@ -46,7 +47,8 @@ def message_cost(sender, recipients):
     return price
 
 
-def send_message(sender, recipients, content, allow_overdraft=False):
+def send_message(sender, recipients, content, action_code=None, allow_overdraft=False):
+    plain_recip     = recipients # save this for record_action
     if recipients.__class__ == str:
         recipients  = Member(alias=random_alias(),rating=1,mobile=recipients,credit=0, membership=MemberType.objects.get(code='alien'))
 
@@ -73,4 +75,40 @@ def send_message(sender, recipients, content, allow_overdraft=False):
     if allow_overdraft:
         if sender.credit < 0:
             sender.credit   = 0
+
+    if action_code.__class__ == str and action_code != None:
+        record_action(action_code, sender, plain_recip, content, cost)
+
+    return cost
+
+def default_tag():
+    if not config:
+        config      = Configuration.get_dictionary()
+
+    return Tag.by_code(config['dfl_tag_code'])
+
+def record_action(kind, source, target, text, cost, tags=[], date=datetime.datetime.now()):
+
+    if target.__class__ == str:
+        target  = Member.system()
+
+    if target.__class__ == Member:
+        target  = [target]
+
+    action  = Action(kind=ActionType.by_code(kind), source=source, text=text, date=date, cost=cost)
+    action.save()
+
+    for m in target:
+        action.target.add(m)
+
+    for t in tags:
+        if t.__class__  == str:
+            tag = Tag.by_code(t)
+            if tag  == None:
+                continue
+        elif t.__class__    == Tag:
+            tag = t
+        action.tags.add(tag)
+    action.save()
+    return action
 

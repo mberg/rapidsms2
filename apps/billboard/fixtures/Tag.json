@@ -1,0 +1,1 @@
+[{"pk": 1, "model": "billboard.tag", "fields": {"code": "v", "name": "Sell"}}, {"pk": 2, "model": "billboard.tag", "fields": {"code": "b", "name": "Buy"}}, {"pk": 3, "model": "billboard.tag", "fields": {"code": "a", "name": "Announcement"}}, {"pk": 4, "model": "billboard.tag", "fields": {"code": "o", "name": "Other"}}]

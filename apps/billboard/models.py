@@ -35,7 +35,7 @@ class Member(models.Model):
     zone        = models.ForeignKey(Zone)
     latitude    = models.CharField(_('Latitude'), max_length=25, blank=True, null=True)
     longitude   = models.CharField(_('Longitude'), max_length=25, blank=True, null=True)
-    picture     = models.ImageField(_('Picture'),upload_to='board_pics', blank=True, null=True)
+    picture     = models.ImageField(_('Picture'), upload_to='board_pics', blank=True, null=True)
     details     = models.TextField(blank=True)
 
     def __unicode__(self):
@@ -78,35 +78,66 @@ class Member(models.Model):
         for b in ab:
             ba.append(b)
         return ba
-"""
-class Announcement(models.Model):
-    sender      = models.ForeignKey("Member", related_name="%(class)s_related_sender")
-    recipients  = models.ManyToManyField("Member", related_name="%(class)s_related_recipients")
-    text        = models.CharField(max_length=140)
-    date        = models.DateTimeField()
-    price       = models.IntegerField(default=0)
-    sent        = models.BooleanField()
+
+class ActionType(models.Model):
+    code        = models.CharField(max_length=25,primary_key=True)
+    name        = models.CharField(max_length=50)
 
     def __unicode__(self):
-        return "%s (%s)" % (self.sender, self.date.strftime("%c"))
-"""
-"""
-class ActionType(models.Model):
-    code        = models.CharField(max_length=10,primary_key=True)
+        return self.name
+
+    @classmethod
+    def by_code (cls, code):
+        try:
+            return cls.objects.get(code=code)
+        except models.ObjectDoesNotExist:
+            return None
+
+class Action(models.Model):
+    kind        = models.ForeignKey("ActionType")
+    source      = models.ForeignKey("Member", related_name="%(class)s_related_source")
+    target      = models.ManyToManyField("Member", related_name="%(class)s_related_target",blank=True)
+    text        = models.CharField(max_length=140)
+    date        = models.DateTimeField()
+    cost        = models.IntegerField(default=0)
+    tags        = models.ManyToManyField("Tag",null=True,blank=True)
+
+    def __unicode__(self):
+        return u"%(from)s %(kind)s (%(cost)s)" % {'from': self.source.alias, 'kind': self.kind, 'cost':self.cost}
+
+    def targets(self):
+        if self.target.count() == 0:
+            return "None"
+        elif self.target.count() > 0:
+            #return self.target.count()
+            s   = self.target.select_related()[0].__unicode__()
+            if self.target.count() > 1:
+                s   += " (%s)" % self.target.count().__str__()
+            return s
+
+class Tag(models.Model):
+    code        = models.CharField(max_length=2, unique=True)
     name        = models.CharField(max_length=30)
 
     def __unicode__(self):
         return self.name
 
-class Actions(models.Model):
-    kind        = models.ForeignKey("ActionType")
-    sender      = models.ForeignKey("Member", related_name="%(class)s_related_sender")
-    recipients  = models.ManyToManyField("Member", related_name="%(class)s_related_recipients")
-    text        = models.CharField(max_length=140)
-    date        = models.DateTimeField()
-    cost        = models.IntegerField(default=0)
-    tags        = 
-"""
+    @classmethod
+    def by_code (cls, code):
+        try:
+            return cls.objects.get(code=code)
+        except models.ObjectDoesNotExist:
+            return None
+
+    @classmethod
+    def find_or_create (cls, code):
+        try:
+            return cls.objects.get(code=code)
+        except models.ObjectDoesNotExist:
+            t   = Tag(code=code,name=code)
+            t.save()
+            return t
+
 class MessageLog(models.Model):
     sender      = models.CharField(max_length=16)
     sender_member   =  models.ForeignKey("Member", blank=True, null=True, related_name="%(class)s_related_sender")
@@ -118,7 +149,7 @@ class MessageLog(models.Model):
     def __unicode__(self):
         sender      = self.sender_member.alias if self.sender_member else self.sender
         recipient   = self.recipient_member.alias if self.recipient_member else self.recipient
-        return u"%(sender)s -> %(recipient)s: %(text)s" % {'sender': sender, 'recipient':recipient, 'text':self.text[:20]}
+        return u"%(sender)s > %(recipient)s: %(text)s" % {'sender': sender, 'recipient':recipient, 'text':self.text[:20]}
 
 class Configuration(models.Model):
     key     = models.CharField(max_length=16, primary_key=True)
