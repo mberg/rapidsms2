@@ -17,15 +17,21 @@ def random_alias():
 
 def zone_recipients(zone, exclude=None):
     recipients  = []
-    query_zone  = Zone.objects.get(name=zone)
-    all_zones   = recurs_zones(query_zone)
-    all_boards  = Member.objects.filter(membership=MemberType.objects.get(code='board'),zone__in=all_zones)
+    try:
+        query_zone  = Zone.objects.get(name=zone)
+        all_zones   = recurs_zones(query_zone)
+        all_boards  = Member.objects.filter(membership=MemberType.objects.get(code='board'),zone__in=all_zones)
+    except models.ObjectDoesNotExist:
+        all_boards  = Member.objects.filter(membership=MemberType.objects.get(code='board'),alias=zone)
 
     for board in all_boards.iterator():
         recipients.append(board)
 
     if not exclude == None:
-        recipients.remove(exclude)
+        try:
+            recipients.remove(exclude)
+        except:
+            pass
 
     return recipients
 

@@ -113,7 +113,7 @@ class App (rapidsms.app.App):
             tags    = []
 
         try:
-            send_message(message.sender, recipients, _(u"Announce (@%(sender)s): %(text)s") % {"text":text, 'sender':message.sender.name}, 'ann_notif_all')
+            send_message(message.sender, recipients, _(u"Announce (@%(sender)s): %(text)s") % {"text":text, 'sender':message.sender.alias}, 'ann_notif_all')
         except InsufficientCredit:
             send_message(Member.system(), message.sender, _(u"Sorry, this message requires a %(price)d%(currency)s credit. You account balance is only %(credit)s%(currency)s. Top-up your account then retry.") % {'price':price, 'credit':message.sender.credit, 'currency': config['currency']}, 'ann_nonotif_board', True)
 
