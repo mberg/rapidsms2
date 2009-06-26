@@ -99,12 +99,13 @@ class App (rapidsms.app.App):
             log.save()
         return handled
 
-
-    @keyword(r'new \@(\w+) (.+)')
+    @keyword(r'new ([a-z\,0-9\@]+) (.+)')
     @authenticated
-    def new_announce (self, message, zone, text):
-        zone        = zone.lower()
-        recipients  = zone_recipients(zone, message.sender)
+    def new_announce (self, message, zonecode, text):
+        print zonecode
+        targets     = zonecodes_from_string(zonecode.lower())
+        recipients  = zone_recipients(targets, message.sender)
+        print recipients
         price       = message_cost(message.sender, recipients)
         try:
             # over simplified for know ; not sure how we'll use tags
