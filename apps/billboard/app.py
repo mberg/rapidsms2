@@ -102,10 +102,8 @@ class App (rapidsms.app.App):
     @keyword(r'new ([a-z\,0-9\@]+) (.+)')
     @authenticated
     def new_announce (self, message, zonecode, text):
-        print zonecode
         targets     = zonecodes_from_string(zonecode.lower())
         recipients  = zone_recipients(targets, message.sender)
-        print recipients
         price       = message_cost(message.sender, recipients)
         try:
             # over simplified for know ; not sure how we'll use tags
@@ -114,13 +112,13 @@ class App (rapidsms.app.App):
             tags    = []
 
         try:
-            send_message(message.sender, recipients, _(u"Announce (@%(sender)s): %(text)s") % {"text":text, 'sender':message.sender.alias}, 'ann_notif_all')
+            send_message(message.sender, recipients, _(u"Announce (%(sender)s): %(text)s") % {"text":text, 'sender':message.sender.alias_display()}, 'ann_notif_all')
         except InsufficientCredit:
-            send_message(Member.system(), message.sender, _(u"Sorry, this message requires a %(price)d%(currency)s credit. You account balance is only %(credit)s%(currency)s. Top-up your account then retry.") % {'price':price, 'credit':message.sender.credit, 'currency': config['currency']}, 'ann_nonotif_board', True)
+            send_message(Member.system(), message.sender, _(u"Sorry, this message requires a %(price)s%(currency)s credit. You account balance is only %(credit)s%(currency)s. Top-up your account then retry.") % {'price':price, 'credit':message.sender.credit, 'currency': config['currency']}, 'ann_nonotif_board', True)
 
         record_action('ann', message.sender, Member.system(), message.text, 0, tags)
 
-        send_message(Member.system(), message.sender, _(u"Thanks, your announce has been sent (%(price)d%(currency)s). Your balance is now %(credit)s%(currency)s.") % {'price':price, 'credit':message.sender.credit, 'currency': config['currency']}, 'ann_notif_board', True)
+        send_message(Member.system(), message.sender, _(u"Thanks, your announce has been sent (%(price)s%(currency)s). Your balance is now %(credit)s%(currency)s.") % {'price':price, 'credit':message.sender.credit, 'currency': config['currency']}, 'ann_notif_board', True)
         return True
 
     @keyword(r'stop')
@@ -140,7 +138,7 @@ class App (rapidsms.app.App):
     def stop_board (self, message, name):
         member    = Member.objects.get(alias=name)
         if not member.active: # already off
-            send_message(Member.system(), message.sender, _(u"@%(member)s is not part in the network") % {'member':member.alias}, 'board_was_off_notif', True)
+            send_message(Member.system(), message.sender, _(u"%(member)s is not part of the network") % {'member':member.alias_display()}, 'board_was_off_notif', True)
             return True
         member.active   = False
         member.save()
@@ -155,7 +153,7 @@ class App (rapidsms.app.App):
         # we charge the manager if he has credit but don't prevent sending if he hasn't.
         if config['send_exit_notif']:
             recipients  = Member.active_boards()
-            send_message(sender, recipients, _(u"Info: @%(member)s has left the network.") % {'member':sender.alias}, 'exit_notif_all', True)
+            send_message(sender, recipients, _(u"Info: %(member)s has left the network.") % {'member':sender.alias_display()}, 'exit_notif_all', True)
         send_message(Member.system(), sender, _(u"You have now left the network. Your balance, shall you come back, is %(credit)s%(currency)s. Good bye.") % {'credit':sender.credit, 'currency': config['currency']}, 'exit_notif_board', True)
 
     @keyword(r'join')
@@ -178,7 +176,7 @@ class App (rapidsms.app.App):
     def join_board (self, message, name):
         member    = Member.objects.get(alias=name)
         if member.active: # already on
-            send_message(Member.system(), message.sender, _(u"@%(member)s is already active in the network") % {'member':member.alias}, 'board_was_active_notif', True)
+            send_message(Member.system(), message.sender, _(u"%(member)s is already active in the network") % {'member':member.alias_display()}, 'board_was_active_notif', True)
             return True
         member.active   = True
         member.save()
@@ -194,7 +192,7 @@ class App (rapidsms.app.App):
             recipients  = Member.active_boards()
             recipients.remove(sender)
             try:
-                send_message(sender, recipients, _(u"Info: %(sender_zone)s has joined the network.") % {'sender_zone':sender.alias}, 'join_notif_all')
+                send_message(sender, recipients, _(u"Info: %(sender_zone)s has joined the network.") % {'sender_zone':sender.alias_display()}, 'join_notif_all')
             except InsufficientCredit:
                 send_message(Member.system(), sender, _(u"You just joined the network. Other boards hasn't been notified because your credit is insufficient (%(credit)s%(currency)s). Welcome back!") % {'credit':sender.credit, 'currency': config['currency']}, 'silent_join_notif_board', True)
                 return True

@@ -15,8 +15,8 @@ class Zone(models.Model):
 class MemberType(models.Model):
     name        = models.CharField(max_length=20)
     code        = models.CharField(max_length=10)
-    fee         = models.IntegerField()
-    contrib     = models.IntegerField(_(u'Contribution'))
+    fee         = models.FloatField()
+    contrib     = models.FloatField(_(u'Contribution'))
 
     def __unicode__(self):
         return self.name
@@ -30,7 +30,7 @@ class Member(models.Model):
     mobile      = models.CharField(max_length=16, db_index=True, unique=True)
     membership  = models.ForeignKey(MemberType,verbose_name=_(u'Type'))
     active      = models.BooleanField(default=True)
-    credit      = models.IntegerField(default=0)
+    credit      = models.FloatField(default=0)
     rating      = models.IntegerField(_("Rating"), default=1)
     zone        = models.ForeignKey(Zone)
     latitude    = models.CharField(_('Latitude'), max_length=25, blank=True, null=True)
@@ -59,6 +59,9 @@ class Member(models.Model):
 
     def alias_zone(self):
         return u"@%(alias)s (@%(zone)s)" % {'alias': self.alias, 'zone': self.zone.name}
+
+    def alias_display(self):
+        return u"@%(alias)s" % {'alias': self.alias}
 
     @classmethod
     def by_mobile (cls, mobile):
@@ -99,7 +102,7 @@ class Action(models.Model):
     target      = models.ManyToManyField("Member", related_name="%(class)s_related_target",blank=True)
     text        = models.CharField(max_length=140)
     date        = models.DateTimeField()
-    cost        = models.IntegerField(default=0)
+    cost        = models.FloatField(default=0)
     tags        = models.ManyToManyField("Tag",null=True,blank=True)
 
     def __unicode__(self):
