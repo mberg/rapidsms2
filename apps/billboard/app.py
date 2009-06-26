@@ -89,7 +89,7 @@ class App (rapidsms.app.App):
             send_message(Member.system(), message.peer, e.message, 'err_plain_notif', True)
             handled = True
         except Exception, e:
-            send_message(Member.system(), message.peer, _(u"An error has occured. Please, contact %(service_num)s for more informations. %(from)s") % {'service_num': config['service_num'], 'from':message.peer}, 'err_occured_notif', True)
+            send_message(Member.system(), message.peer, _(u"An error has occured (%(e)s). Contact %(service_num)s. %(from)s") % {'service_num': config['service_num'], 'from':message.peer, 'e':e}, 'err_occured_notif', True)
             raise
         message.was_handled = bool(handled)
         if message.was_handled:
@@ -198,6 +198,19 @@ class App (rapidsms.app.App):
                 return True
         
         send_message(Member.system(), sender, _(u"Thank you for joining back the network! We notified your peers of your return. Your balance is %(credit)s%(currency)s.") % {'credit':sender.credit, 'currency': config['currency']}, 'join_notif_board', True)
+
+    @keyword(r'moneyup \@(\w+) ([0-9\.]+)')
+    @sysadmin
+    def join_board (self, message, name, amount):
+        member    = Member.objects.get(alias=name)
+        member.credit   += float(amount)
+
+        record_action('moneyup', message.sender, member, message.text, 0)
+
+        send_message(Member.system(), member, _(u"Thank you for toping-up your account. Your new balance is %(credit)s%(currency)s.") % {'credit':member.credit, 'currency': config['currency']}, 'moneyup_notif_board', True)
+
+        return True
+
 
     def outgoing (self, message):
         # if info message ; down manager credit by 10F
