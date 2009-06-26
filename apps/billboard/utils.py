@@ -37,36 +37,12 @@ def zone_recipients(zonecode, exclude=None):
             query_zone  = Zone.objects.get(name=zone)
             all_zones   = recurs_zones(query_zone)
             all_boards  = Member.objects.filter(membership=MemberType.objects.get(code='board'),zone__in=all_zones)
-            #raise Exception, "ok ?"
         except models.ObjectDoesNotExist:
             all_boards  = Member.objects.filter(membership=MemberType.objects.get(code='board'),alias=zone)
-            #raise Exception, "no z from name "+zone
 
         for board in all_boards.iterator():
             if recipients.count(board) == 0:
                 recipients.append(board)
-
-    if not exclude == None:
-        try:
-            recipients.remove(exclude)
-        except:
-            pass
-
-    return recipients
-
-
-def zone_recipients_(zone, exclude=None):
-    recipients  = []
-    try:
-        query_zone  = Zone.objects.get(name=zone)
-        all_zones   = recurs_zones(query_zone)
-        all_boards  = Member.objects.filter(membership=MemberType.objects.get(code='board'),zone__in=all_zones)
-    except models.ObjectDoesNotExist:
-        all_boards  = Member.objects.filter(membership=MemberType.objects.get(code='board'),alias=zone)
-
-    for board in all_boards.iterator():
-        if recipients.count(board) == 0:
-            recipients.append(board)
 
     if not exclude == None:
         try:
