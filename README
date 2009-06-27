@@ -2,11 +2,21 @@
 Description: A few RapidSMS apps.
 Licence: Public Domain
 
-Install:
-Some apps may require some datas in the DB to work.
-Import the content of the fixtures subfolder if applicable.
+############
+# INSTALL
+############
 
-Example:
-    $ ./manage.py loaddata apps/billboard/fixtures/*.json
+* FIXTURES
+    Some apps may require some datas in the DB to work.
+    Import the content of the fixtures subfolder if applicable.
 
+    Example:
+        $ ./manage.py loaddata apps/billboard/fixtures/*.json
+
+* PERIODIC TASKS
+    Some apps may require periodic launch of scripts.
+    Add the content of scripts/cron file to your crontab.
+
+    Example:
+        $ crontab -r apps/billboard/scripts/crontab # WARNING ; REPLACES YOURS
 

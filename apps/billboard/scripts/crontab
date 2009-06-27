@@ -1,0 +1,2 @@
+# m h  dom mon dow   command
+*/30 * * * * ~/rapidsms/apps/billboard/scripts/period_balance_check.py
