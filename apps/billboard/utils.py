@@ -38,10 +38,11 @@ def zone_recipients(zonecode, exclude=None):
     for zone in zonecode:
         try:
             query_zone  = Zone.objects.get(name=zone)
+            print query_zone
             all_zones   = recurs_zones(query_zone)
             all_boards  = Member.objects.filter(active=True,membership=MemberType.objects.get(code='board'),zone__in=all_zones)
         except models.ObjectDoesNotExist:
-            all_boards  = Member.objects.filter(Active=True,membership=MemberType.objects.get(code='board'),alias=zone)
+            all_boards  = Member.objects.filter(active=True,membership=MemberType.objects.get(code='board'),alias=zone)
 
         for board in all_boards.iterator():
             if recipients.count(board) == 0:

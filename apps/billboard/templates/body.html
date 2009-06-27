@@ -1,0 +1,75 @@
+<html>
+<head>
+<title>{% block title %}{% endblock %} - Baroni</title>
+<style type="text/css">
+body {
+    color: #666;
+}
+a, a:visited, a:link, a:hover {
+    color: black;
+    text-decoration: none;
+    padding: 0.2em;
+}
+a:hover {
+    color: orange;
+    text-decoration: underline;
+    background-color: black;
+}
+#header {
+    border-bottom: 1px solid #666;
+}
+#header p.tagline {
+    margin-top: 0;
+    padding-top: 0;
+}
+#header h1 {
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+#header #menu {
+    list-style-type: none;
+    padding: 0;
+}
+
+#header #menu li {
+    display: inline;
+}
+td {
+    padding: 0.2em;
+}
+tr.row1 {
+    background-color: #dedede;
+}
+tr.row2 {
+    background-color: #aeaeae;
+}
+tr td {
+    text-align: center;
+}
+td.text {
+    text-align: left;
+}
+</style>
+</head>
+<body>
+<div id="header">
+{% block header %}
+    <h1>Baroni # {{ conf.service_num }}</h1>
+    <p class="tagline">Small Talks, Great Benefits!</p>
+    <ul id="menu">
+    <li><a href="/">Home</a></li>
+    <li><a href="/history">Accounts Details</a></li>
+    <li><a href="/zones">List of Boards</a></li>
+    <li><a href="/help">Help</a></li>
+    </ul>
+{% endblock %}
+</div>
+<div id="content">
+{% block content %}
+<p>You are most welcome!</p>
+{% endblock %}
+</div>
+<div id="footer">
+{% block footer %}
+{% endblock %}
+</div>

@@ -67,6 +67,9 @@ class ActionAdmin(admin.ModelAdmin):
 class TagAdmin(admin.ModelAdmin):
     pass
 
+class ConfigurationAdmin(admin.ModelAdmin):
+    list_display    = ('__unicode__', 'value')
+
 # registrations
 try:
     admin.site.unregister(User)
@@ -78,7 +81,7 @@ admin.site.register(MessageLog, MessageLogAdmin)
 admin.site.register(MemberType, MemberTypeAdmin)
 admin.site.register(Member, MemberAdmin)
 admin.site.register(Zone, ZoneAdmin)
-admin.site.register(Configuration)
+admin.site.register(Configuration, ConfigurationAdmin)
 admin.site.register(ActionType, ActionTypeAdmin)
 admin.site.register(Action, ActionAdmin)
 admin.site.register(Tag, TagAdmin)

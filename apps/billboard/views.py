@@ -1,31 +1,36 @@
 # coding=utf-8
 
+from django.db.models import Q
 from django.template import Template, loader, Context
 from apps.billboard.models import *
 from apps.billboard.utils import *
 from django.http import HttpResponse
 
 def index(request):
-    return HttpResponse("Hello, world.")
+    return HttpResponse(loader.get_template('body.html').render(Context({'conf': config})))
+
+def help(request):
+    print config['service_num']
+    return HttpResponse(loader.get_template('help.html').render(Context({'conf': config})))
 
 def zone_list(request):
 
-    config      = Configuration.get_dictionary()
-    msg_price   = config['price_per_board']
+#    config      = Configuration.get_dictionary()
 
     tree    = []
     def zone_fill(tree, zone):
         dumb_board  = Member(alias=random_alias(),rating=1,mobile='000000',credit=0, membership=MemberType.objects.get(code='board'))
         tlz     = Zone.objects.filter(zone=zone)    
         for z in tlz:
-            recipients  = zone_recipients(z.name, None)
+            recipients  = zone_recipients(str(z.name))
             price       = message_cost(dumb_board, recipients)
-            zo      = {'n': z.name, 'p': price}
+            zo      = {'n': z.name, 'p': price, 'pf': price_fmt(price)}
             zo['c'] = []
             zo['b'] = []
             bb      = Member.objects.filter(zone=z,membership=MemberType.objects.get(code='board'),active=True)
             for board in bb:
-                bo  = {'n': board.display_name(), 'c': board.rating, 'p': board.rating * msg_price, 'm': board.mobile, 'd': board.details}
+                mc  = message_cost(dumb_board, [board])
+                bo  = {'n': board.display_name(), 'c': board.rating, 'p': mc, 'm': board.mobile, 'd': board.details, 'pf': price_fmt(mc)}
                 zo['b'].append(bo)
             zone_fill(zo['c'], z)
             tree.append(zo)
@@ -44,13 +49,25 @@ def zone_list(request):
 
     tbh = recurs_rend(tb, tree)
 
-    t   = Template("{% extends 'zone_list.html' %} {% block zone %}" + tbh + "{% endblock %}")
+    t   = Template("{% extends 'body.html' %}{% block title %}List of Boards and Zones{% endblock %} {% block content %}" + tbh + "{% endblock %}")
 
     c = Context({
-        'service_num': config['service_num'],
+        'conf': config,
     })
     return HttpResponse(t.render(c))
 
+def history(request):
+    t   = loader.get_template('history.html')
+    c   = Context({'members': Member.objects.filter(membership=MemberType.by_code('board')),
+                   'conf': config})
+    return HttpResponse(t.render(c))
 
+def history_one(request, alias):
+    member  = Member.objects.get(alias=alias)
+    t   = loader.get_template('history_one.html')
+    c   = Context({'member': member,
+                   'actions': Action.objects.filter(Q(source=member)),
+                   'conf': config})
+    return HttpResponse(t.render(c))
 
 

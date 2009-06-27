@@ -1,0 +1,16 @@
+{% extends "body.html" %}
+
+{% block title %}{{ m.alias_display }} Account Details{% endblock %}
+
+{% block content %}
+<table>
+<tr><th>Date</th><th>Action</th><th>Target</th><th>Cost ({{conf.currency}})</th><th>SMS Text</th></tr>
+{% for a in actions %}
+<tr class="{% cycle 'row1' 'row2' %}">
+<td>{{ a.date|date:"D d M H:i" }}</td><td class="text">{{ a }}</td><td>{{ a.targets }}</td><td>{{ a.cost }}</td><td class="text">{{ a.text|truncatewords:"10" }}</td>
+</tr>
+{% endfor %}
+</table>
+
+{% endblock %}
+

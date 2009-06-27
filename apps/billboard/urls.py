@@ -13,7 +13,10 @@ except AttributeError:
 
 urlpatterns = patterns('',
     (r'^$', 'apps.billboard.views.index'),
-    (r'^zone-list\/?$', 'apps.billboard.views.zone_list'),
+    (r'^zones\/?$', 'apps.billboard.views.zone_list'),
+    (r'^history\/$', 'apps.billboard.views.history'),
+    (r'^history\/([a-z0-9]+)$', 'apps.billboard.views.history_one'),
+    (r'^help\/$', 'apps.billboard.views.help'),
     (r'^medias/(?P<path>.*)$', 'django.views.static.serve', {'document_root': '/work/src/sms/media', 'show_indexes': True}),
     admin_urls
 )
