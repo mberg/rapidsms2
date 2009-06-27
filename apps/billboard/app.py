@@ -6,6 +6,7 @@ from rapidsms.message import Message
 
 from models import *
 from utils import *
+from ..simpleoperator.operators import *
 
 import re
 import unicodedata
@@ -259,6 +260,30 @@ class App (rapidsms.app.App):
 
     def register_error(self, peer, key, value):
         send_message(Member.system(), peer, _(u"Unable to register. %(key)s (%(value)s) is either incorrect or in use by another member." % {'key': key, 'value': value}), 'mobile_exist_noreg_notif', True)
+        return True
+
+    # Add credit to account by sending voucher number
+    # topup 5792109732680
+    @keyword(r'topup (\d+)')
+    @registered
+    def topup_board (self, message, card_pin):
+
+        return True # need to migrate to pygsm first
+        operator            = eval("%s()" % operator_name)
+        operator_topup      = operator.build_topup_ussd(card_pin)
+
+        try:
+            operator_sentence   = modem.ussd(operator_topup)
+            amount              = operator.get_amount_topup(operator_sentence)
+        except: raise Exception, operator_sentence
+
+        message.sender.credit   += float(amount)
+
+        text    = u"%(op)s %(ussd)s: %(topup)s" % {'ussd': operator_topup, 'topup':price_fmt(amount), 'op':operator}
+        record_action('topup', message.sender, Member.system(), text, 0)
+
+        send_message(Member.system(), message.sender, _(u"Thank you for toping-up your account. Your new balance is %(credit)s.") % {'credit':price_fmt(message.sender.credit)}, 'topup_notif_board', True)
+
         return True
 
 
