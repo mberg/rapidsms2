@@ -18,6 +18,8 @@ from datetime import *
 from apps.simpleoperator.operators import *
 from pygsm import * # requires pygsm fork with ussd method!
 import time
+from rapidsms.config import Config
+conf = Config("rapidsms.ini")
 
 def logger(modem, message, type):
     if type in (1,2): print "%8s %s" % (type, message)
@@ -26,7 +28,7 @@ def logger(modem, message, type):
 operator_name   = "MTNGhana"
 operator    = eval("%s()" % operator_name)
 
-modem = GsmModem(port="/dev/ttyUSB0", baudrate=115200, xonxoff=0, rtscts=1, logger=logger)
+modem = GsmModem(port=conf["modem"]["port"], baudrate=conf["modem"]["baudrate"], xonxoff=conf["modem"]["xonxoff"], rtscts=conf["modem"]["rtscts"], logger=logger)
 operator_sentence   = modem.ussd(operator.BALANCE_USSD)
 #print operator_sentence
 balance = operator.get_balance(operator_sentence)
