@@ -25,7 +25,7 @@ def logger(modem, message, type):
     if type in (1,2): print "%8s %s" % (type, message)
     pass
 
-operator_name   = "MTNGhana"
+operator_name   = config['operator']
 operator    = eval("%s()" % operator_name)
 
 modem = GsmModem(port=conf["modem"]["port"], baudrate=conf["modem"]["baudrate"], xonxoff=conf["modem"]["xonxoff"], rtscts=conf["modem"]["rtscts"], logger=logger)
@@ -33,7 +33,7 @@ operator_sentence   = modem.ussd(operator.BALANCE_USSD)
 #print operator_sentence
 balance = operator.get_balance(operator_sentence)
 
-message = u"%(op)s %(ussd)s: %(balance)s%(currency)s" % {'ussd': operator.BALANCE_USSD, 'balance':balance, 'op':operator, 'currency':config['currency']}
+message = u"%(op)s %(ussd)s: %(balance)s" % {'ussd': operator.BALANCE_USSD, 'balance':price_fmt(balance), 'op':operator}
 record_action('balance_check', Member.system(), Member.system(), message, 0)
 
 print message

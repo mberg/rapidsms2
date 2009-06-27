@@ -26,16 +26,6 @@ class MemberUserAdmin(UserAdmin):
     )
     inlines     = (MemberInline,)
     list_filter = ['is_active']
-"""
-class AnnouncementAdmin(admin.ModelAdmin):
-
-    class Meta:
-        ordering = ["date"]
-
-    list_display = ('sender', 'date', 'price','sent')
-    list_filter = ['sender','date','sent']
-    search_fields = ['sender','text','recipients']
-"""
 
 class ZoneAdmin(admin.ModelAdmin):
     list_filter = ['zone']

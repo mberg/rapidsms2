@@ -12,6 +12,9 @@ class InsufficientCredit(Exception):
 server  = spomsky.Client()
 config  = Configuration.get_dictionary()
 
+def price_fmt(price):
+    return u"%(p)s%(c)s" % {'p':price, 'c':config['currency']}
+
 def random_alias():
     return "".join(random.sample(string.letters+string.digits, 10)).lower()
 
