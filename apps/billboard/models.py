@@ -12,6 +12,13 @@ class Zone(models.Model):
     def __unicode__(self):
         return self.full_name if not self.full_name == None else self.name
 
+    @classmethod
+    def by_name (cls, name):
+        try:
+            return cls.objects.get(name=name)
+        except models.ObjectDoesNotExist:
+            return None
+
 class MemberType(models.Model):
     name        = models.CharField(max_length=20)
     code        = models.CharField(max_length=10)
@@ -20,6 +27,13 @@ class MemberType(models.Model):
 
     def __unicode__(self):
         return self.name
+
+    @classmethod
+    def by_code (cls, code):
+        try:
+            return cls.objects.get(code=code)
+        except models.ObjectDoesNotExist:
+            return None
 
 class Member(models.Model):
     class Meta:

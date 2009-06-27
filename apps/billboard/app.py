@@ -99,6 +99,8 @@ class App (rapidsms.app.App):
             log.save()
         return handled
 
+    # Place an ad on the system
+    # new @ny +s Sell pictures of Paris Hilton Naked. +123456789
     @keyword(r'new ([a-z\,0-9\@]+) (.+)')
     @authenticated
     def new_announce (self, message, zonecode, text):
@@ -121,6 +123,8 @@ class App (rapidsms.app.App):
         send_message(Member.system(), message.sender, _(u"Thanks, your announce has been sent (%(price)s%(currency)s). Your balance is now %(credit)s%(currency)s.") % {'price':price, 'credit':message.sender.credit, 'currency': config['currency']}, 'ann_notif_board', True)
         return True
 
+    # Disable my account
+    # stop
     @keyword(r'stop')
     @authenticated
     def stop_board (self, message):
@@ -133,6 +137,8 @@ class App (rapidsms.app.App):
 
         return True
 
+    # Disable one's account
+    # stop @bronx1
     @keyword(r'stop \@(\w+)')
     @sysadmin
     def stop_board (self, message, name):
@@ -149,6 +155,7 @@ class App (rapidsms.app.App):
 
         return True
 
+    # message sending helper
     def followup_stop(self, sender):
         # we charge the manager if he has credit but don't prevent sending if he hasn't.
         if config['send_exit_notif']:
@@ -156,6 +163,8 @@ class App (rapidsms.app.App):
             send_message(sender, recipients, _(u"Info: %(member)s has left the network.") % {'member':sender.alias_display()}, 'exit_notif_all', True)
         send_message(Member.system(), sender, _(u"You have now left the network. Your balance, shall you come back, is %(credit)s%(currency)s. Good bye.") % {'credit':sender.credit, 'currency': config['currency']}, 'exit_notif_board', True)
 
+    # Activate my disabled account
+    # join
     @keyword(r'join')
     @registered
     def join_board (self, message):
@@ -171,6 +180,8 @@ class App (rapidsms.app.App):
 
         return True
 
+    # activate one's disabled account
+    # join @bronx1
     @keyword(r'join \@(\w+)')
     @sysadmin
     def join_board (self, message, name):
@@ -187,6 +198,7 @@ class App (rapidsms.app.App):
 
         return True
 
+    # message sending helper
     def followup_join(self, sender):
         if config['send_join_notif']:
             recipients  = Member.active_boards()
@@ -194,14 +206,16 @@ class App (rapidsms.app.App):
             try:
                 send_message(sender, recipients, _(u"Info: %(sender_zone)s has joined the network.") % {'sender_zone':sender.alias_display()}, 'join_notif_all')
             except InsufficientCredit:
-                send_message(Member.system(), sender, _(u"You just joined the network. Other boards hasn't been notified because your credit is insufficient (%(credit)s%(currency)s). Welcome back!") % {'credit':sender.credit, 'currency': config['currency']}, 'silent_join_notif_board', True)
+                send_message(Member.system(), sender, _(u"You just joined the network. Other boards hasn't been notified because your credit is insufficient (%(credit)s%(currency)s). Welcome!") % {'credit':sender.credit, 'currency': config['currency']}, 'silent_join_notif_board', True)
                 return True
         
-        send_message(Member.system(), sender, _(u"Thank you for joining back the network! We notified your peers of your return. Your balance is %(credit)s%(currency)s.") % {'credit':sender.credit, 'currency': config['currency']}, 'join_notif_board', True)
+        send_message(Member.system(), sender, _(u"Thank you for joining the network! We notified your peers of your return. Your balance is %(credit)s%(currency)s.") % {'credit':sender.credit, 'currency': config['currency']}, 'join_notif_board', True)
 
+    # Add some credit to a member's account.
+    # moneyup @bronx1 200
     @keyword(r'moneyup \@(\w+) ([0-9\.]+)')
     @sysadmin
-    def join_board (self, message, name, amount):
+    def moneyup_board (self, message, name, amount):
         member    = Member.objects.get(alias=name)
         member.credit   += float(amount)
 
@@ -209,6 +223,54 @@ class App (rapidsms.app.App):
 
         send_message(Member.system(), member, _(u"Thank you for toping-up your account. Your new balance is %(credit)s%(currency)s.") % {'credit':member.credit, 'currency': config['currency']}, 'moneyup_notif_board', True)
 
+        return True
+
+    # registers a member (usually Board) into the system.
+    # register bronx1 567896 bronx
+    @keyword(r'register \@?(\w+) (\d+) (\w+)( [\d\.]+)?( \d+)?( \w+)?')
+    @sysadmin
+    def register_board (self, message, alias, mobile, zonecode, credit, rating, membership):
+        if credit == None: credit = 0
+        if rating == None: rating = 1
+        if membership == None: membership = 'board'
+
+        credit  = float(credit)
+        rating  = int(rating)
+        zone        = Zone.by_name(zonecodes_from_string(zonecode).pop())
+        membership  = MemberType.by_code(membership)
+
+        if zone == None:
+            return self.register_error(message.sender, 'Zone', zonecode)
+
+        try:
+            m       = Member.objects.get(mobile=mobile)
+            return self.register_error(message.sender, 'Mobile', mobile)
+        except: pass
+        try:
+            m       = Member.objects.get(alias=alias)
+            return self.register_error(message.sender, 'Alias', alias)
+        except: pass
+
+        try:
+            user    = User(username=alias)
+            user.set_password(alias)
+            user.save()
+        except:
+            return self.register_error(message.sender, 'Alias', alias)
+        
+        member      = Member(user=user, alias=alias, mobile=mobile,zone=zone, credit=float(credit), rating=int(rating), membership=membership, active=True)
+        member.save()
+        
+        record_action('register', message.sender, member, message.text, 0)
+        
+        send_message(Member.system(), message.sender, _(u"%(alias)s registration successful with %(mobile)s at %(zone)s. Credit is %(credit)s%(currency)s." % {'mobile': member.mobile, 'alias': member.alias_display(), 'credit':member.credit, 'zone':member.zone, 'currency': config['currency']}), 'reg_ok_notif', True)        
+       
+        self.followup_join(member)
+
+        return True
+
+    def register_error(self, peer, key, value):
+        send_message(Member.system(), peer, _(u"Unable to register. %(key)s (%(value)s) is either incorrect or in use by another member." % {'key': key, 'value': value}), 'mobile_exist_noreg_notif', True)
         return True
 
 

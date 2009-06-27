@@ -19,7 +19,7 @@ def zonecodes_from_string(zonestring):
     zones   = []
     zonesc   = zonestring.split(',')
     for zone in zonesc:
-        if zone.index('@') == 0:
+        if zone.find('@') == 0:
             zone    = zone.__getslice__(1,zone.__len__())
         if zones.count(zone) == 0:
             zones.append(zone)
