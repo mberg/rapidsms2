@@ -13,14 +13,14 @@ import unicodedata
 from django.utils.translation import ugettext
 from django.conf import settings
 
-def _(txt): return unicodedata.normalize('NFKD', ugettext(txt)).encode('ascii','ignore')
+def _(txt): return txt #unicodedata.normalize('NFKD', ugettext(txt)).encode('ascii','ignore')
 
 def authenticated (func):
     def wrapper (self, message, *args):
         if message.sender:
             return func(self, message, *args)
         else:
-            send_message(Member.system(), message.peer, _(u"You (%(number)s) are not allowed to perform this action. Join the network to be able to.") % {'number': message.peer}, 'err_unactive_user_notif', True)
+            send_message(self.backend, Member.system(), message.peer, _(u"You (%(number)s) are not allowed to perform this action. Join the network to be able to.") % {'number': message.peer}, 'err_unactive_user_notif', True)
             return True
     return wrapper
 
@@ -29,7 +29,7 @@ def registered (func):
         if Member.objects.get(mobile=message.peer):
             return func(self, message, *args)
         else:
-            send_message(Member.system(), message.peer, _(u"You (%(number)s) are not a registered member of the Network. Contact a member to join.") % {'number': message.peer}, 'err_unknow_user_notif', True)
+            send_message(self.backend, Member.system(), message.peer, _(u"You (%(number)s) are not a registered member of the Network. Contact a member to join.") % {'number': message.peer}, 'err_unknow_user_notif', True)
             return True
     return wrapper
 
@@ -52,10 +52,12 @@ class App (rapidsms.app.App):
         config      = Configuration.get_dictionary()
         if config.__len__() < 1: raise Exception, "Need configuration fixture"
         settings.LANGUAGE_CODE  = config["lang"]
+        self.backend    = self._router.backends.pop()
 
     def parse (self, message):
         try:
-            message.text    = unicodedata.normalize('NFKD', message.text.decode('ibm850')).encode('ascii','ignore')
+            pass
+            #message.text    = unicodedata.normalize('NFKD', message.text.decode('ibm850')).encode('ascii','ignore')
         except Exception:
             pass
         
@@ -70,15 +72,16 @@ class App (rapidsms.app.App):
             func, captures = self.keyword.match(self, message.text)
         except TypeError:
             # didn't find a matching function
-            # send_message(Member.system(), message.peer, _("Unknown or incorrectly formed command: %(msg)s... Please call 999-9999") % {"msg":message.text[:10]}, 'err_nomatch_notif', True)
+            # send_message(self.backend, Member.system(), message.peer, _("Unknown or incorrectly formed command: %(msg)s... Please call 999-9999") % {"msg":message.text[:10]}, 'err_nomatch_notif', True)
             return False
         try:
             handled = func(self, message, *captures)
         except HandlerFailed, e:
-            send_message(Member.system(), message.peer, e.message, 'err_plain_notif', True)
+            send_message(self.backend, Member.system(), message.peer, e.message, 'err_plain_notif', True)
             handled = True
         except Exception, e:
-            send_message(Member.system(), message.peer, _(u"An error has occured (%(e)s). Contact %(service_num)s. %(from)s") % {'service_num': config['service_num'], 'from':message.peer, 'e':e}, 'err_occured_notif', True)
+            print e
+            send_message(self.backend, Member.system(), message.peer, _(u"An error has occured (%(e)s). Contact %(service_num)s. %(from)s") % {'service_num': config['service_num'], 'from':message.peer, 'e':e}, 'err_occured_notif', True)
             raise
         message.was_handled = bool(handled)
         if message.was_handled:
@@ -103,13 +106,13 @@ class App (rapidsms.app.App):
             tags    = []
 
         try:
-            send_message(message.sender, recipients, _(u"Announce (%(sender)s): %(text)s") % {"text":text, 'sender':message.sender.alias_display()}, 'ann_notif_all')
+            send_message(self.backend, message.sender, recipients, _(u"Announce (%(sender)s): %(text)s") % {"text":text, 'sender':message.sender.alias_display()}, 'ann_notif_all')
         except InsufficientCredit:
-            send_message(Member.system(), message.sender, _(u"Sorry, this message requires a %(price)s credit. You account balance is only %(credit)s. Top-up your account then retry.") % {'price':price_fmt(price), 'credit':price_fmt(message.sender.credit)}, 'ann_nonotif_board', True)
+            send_message(self.backend, Member.system(), message.sender, _(u"Sorry, this message requires a %(price)s credit. You account balance is only %(credit)s. Top-up your account then retry.") % {'price':price_fmt(price), 'credit':price_fmt(message.sender.credit)}, 'ann_nonotif_board', True)
 
         record_action('ann', message.sender, Member.system(), message.text, 0, tags)
 
-        send_message(Member.system(), message.sender, _(u"Thanks, your announce has been sent (%(price)s). Your balance is now %(credit)s.") % {'price':price_fmt(price), 'credit':price_fmt(message.sender.credit)}, 'ann_notif_board', True)
+        send_message(self.backend, Member.system(), message.sender, _(u"Thanks, your announce has been sent (%(price)s). Your balance is now %(credit)s.") % {'price':price_fmt(price), 'credit':price_fmt(message.sender.credit)}, 'ann_notif_board', True)
         return True
 
     # Disable my account
@@ -133,7 +136,7 @@ class App (rapidsms.app.App):
     def stop_board (self, message, name):
         member    = Member.objects.get(alias=name)
         if not member.active: # already off
-            send_message(Member.system(), message.sender, _(u"%(member)s is not part of the network") % {'member':member.alias_display()}, 'board_was_off_notif', True)
+            send_message(self.backend, Member.system(), message.sender, _(u"%(member)s is not part of the network") % {'member':member.alias_display()}, 'board_was_off_notif', True)
             return True
         member.active   = False
         member.save()
@@ -149,8 +152,8 @@ class App (rapidsms.app.App):
         # we charge the manager if he has credit but don't prevent sending if he hasn't.
         if config['send_exit_notif']:
             recipients  = Member.active_boards()
-            send_message(sender, recipients, _(u"Info: %(member)s has left the network.") % {'member':sender.alias_display()}, 'exit_notif_all', True)
-        send_message(Member.system(), sender, _(u"You have now left the network. Your balance, shall you come back, is %(credit)s. Good bye.") % {'credit':price_fmt(sender.credit)}, 'exit_notif_board', True)
+            send_message(self.backend, sender, recipients, _(u"Info: %(member)s has left the network.") % {'member':sender.alias_display()}, 'exit_notif_all', True)
+        send_message(self.backend, Member.system(), sender, _(u"You have now left the network. Your balance, shall you come back, is %(credit)s. Good bye.") % {'credit':price_fmt(sender.credit)}, 'exit_notif_board', True)
 
     # Activate my disabled account
     # join
@@ -176,7 +179,7 @@ class App (rapidsms.app.App):
     def join_board (self, message, name):
         member    = Member.objects.get(alias=name)
         if member.active: # already on
-            send_message(Member.system(), message.sender, _(u"%(member)s is already active in the network") % {'member':member.alias_display()}, 'board_was_active_notif', True)
+            send_message(self.backend, Member.system(), message.sender, _(u"%(member)s is already active in the network") % {'member':member.alias_display()}, 'board_was_active_notif', True)
             return True
         member.active   = True
         member.save()
@@ -193,12 +196,12 @@ class App (rapidsms.app.App):
             recipients  = Member.active_boards()
             recipients.remove(sender)
             try:
-                send_message(sender, recipients, _(u"Info: %(sender_zone)s has joined the network.") % {'sender_zone':sender.alias_display()}, 'join_notif_all')
+                send_message(self.backend, sender, recipients, _(u"Info: %(sender_zone)s has joined the network.") % {'sender_zone':sender.alias_display()}, 'join_notif_all')
             except InsufficientCredit:
-                send_message(Member.system(), sender, _(u"You just joined the network. Other boards hasn't been notified because your credit is insufficient (%(credit)s). Welcome!") % {'credit':price_fmt(sender.credit)}, 'silent_join_notif_board', True)
+                send_message(self.backend, Member.system(), sender, _(u"You just joined the network. Other boards hasn't been notified because your credit is insufficient (%(credit)s). Welcome!") % {'credit':price_fmt(sender.credit)}, 'silent_join_notif_board', True)
                 return True
         
-        send_message(Member.system(), sender, _(u"Thank you for joining the network! We notified your peers of your return. Your balance is %(credit)s.") % {'credit':price_fmt(sender.credit)}, 'join_notif_board', True)
+        send_message(self.backend, Member.system(), sender, _(u"Thank you for joining the network! We notified your peers of your return. Your balance is %(credit)s.") % {'credit':price_fmt(sender.credit)}, 'join_notif_board', True)
 
     # Add some credit to a member's account.
     # moneyup @bronx1 200
@@ -210,7 +213,7 @@ class App (rapidsms.app.App):
 
         record_action('moneyup', message.sender, member, message.text, 0)
 
-        send_message(Member.system(), member, _(u"Thank you for toping-up your account. Your new balance is %(credit)s.") % {'credit':price_fmt(member.credit)}, 'moneyup_notif_board', True)
+        send_message(self.backend, Member.system(), member, _(u"Thank you for toping-up your account. Your new balance is %(credit)s.") % {'credit':price_fmt(member.credit)}, 'moneyup_notif_board', True)
 
         return True
 
@@ -252,14 +255,14 @@ class App (rapidsms.app.App):
         
         record_action('register', message.sender, member, message.text, 0)
         
-        send_message(Member.system(), message.sender, _(u"%(alias)s registration successful with %(mobile)s at %(zone)s. Credit is %(credit)s." % {'mobile': member.mobile, 'alias': member.alias_display(), 'credit':price_fmt(member.credit), 'zone':member.zone}), 'reg_ok_notif', True)        
+        send_message(self.backend, Member.system(), message.sender, _(u"%(alias)s registration successful with %(mobile)s at %(zone)s. Credit is %(credit)s." % {'mobile': member.mobile, 'alias': member.alias_display(), 'credit':price_fmt(member.credit), 'zone':member.zone}), 'reg_ok_notif', True)        
        
         self.followup_join(member)
 
         return True
 
     def register_error(self, peer, key, value):
-        send_message(Member.system(), peer, _(u"Unable to register. %(key)s (%(value)s) is either incorrect or in use by another member." % {'key': key, 'value': value}), 'mobile_exist_noreg_notif', True)
+        send_message(self.backend, Member.system(), peer, _(u"Unable to register. %(key)s (%(value)s) is either incorrect or in use by another member." % {'key': key, 'value': value}), 'mobile_exist_noreg_notif', True)
         return True
 
     # Add credit to account by sending voucher number
@@ -282,8 +285,20 @@ class App (rapidsms.app.App):
         text    = u"%(op)s %(ussd)s: %(topup)s" % {'ussd': operator_topup, 'topup':price_fmt(amount), 'op':operator}
         record_action('topup', message.sender, Member.system(), text, 0)
 
-        send_message(Member.system(), message.sender, _(u"Thank you for toping-up your account. Your new balance is %(credit)s.") % {'credit':price_fmt(message.sender.credit)}, 'topup_notif_board', True)
+        send_message(self.backend, Member.system(), message.sender, _(u"Thank you for toping-up your account. Your new balance is %(credit)s.") % {'credit':price_fmt(message.sender.credit)}, 'topup_notif_board', True)
 
+        return True
+
+    @keyword(r'ping')
+    def ping (self, message):
+        try:
+            send_message(self.backend, Member.system(), message.peer, "pong")
+        except Exception, e:
+            print e
+        try:
+            print message.peer
+            print message.sender
+        except: pass
         return True
 
 

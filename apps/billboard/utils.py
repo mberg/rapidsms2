@@ -6,10 +6,13 @@ import spomsky
 import string
 import random
 
+def modem_logger(modem, message, type):
+    if type in (1,2): print "%8s %s" % (type, message)
+    pass
+
 class InsufficientCredit(Exception):
     pass 
 
-server  = spomsky.Client()
 config  = Configuration.get_dictionary()
 
 def price_fmt(price):
@@ -74,7 +77,7 @@ def message_cost(sender, recipients):
     return price
 
 
-def send_message(sender, recipients, content, action_code=None, allow_overdraft=False):
+def send_message(backend, sender, recipients, content, action_code=None, allow_overdraft=False):
     plain_recip     = recipients # save this for record_action
     if recipients.__class__ == str:
         recipients  = Member(alias=random_alias(),rating=1,mobile=recipients,credit=0, membership=MemberType.objects.get(code='alien'))
@@ -93,7 +96,9 @@ def send_message(sender, recipients, content, action_code=None, allow_overdraft=
             recipient.credit    += contrib
             recipient.save()
 
-        server.send(recipient.mobile, content[:140])
+        msg = backend.message(recipient.mobile, content[:160])
+        backend._router.outgoing(msg)
+
         log = MessageLog(sender=sender.mobile,sender_member=sender,recipient=recipient.mobile,recipient_member=recipient,text=content[:140],date=datetime.datetime.now())
         log.save()
 
