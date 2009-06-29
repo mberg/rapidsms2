@@ -109,7 +109,7 @@ def history_one(request, alias):
     else:
         form   = DateForm()
 
-    actions = Action.objects.filter(source=member,date__gte=date_from,date__lte=date_to)
+    actions = Action.objects.filter(Q(target=member)|Q(source=member),Q(date__gte=date_from,date__lte=date_to))
     
     total   = 0
     for action in actions:

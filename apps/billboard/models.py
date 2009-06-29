@@ -4,6 +4,11 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils.translation import ugettext_lazy as _
 
+def a_join(ar):
+    s   = ""
+    for a in ar: s += u"%s, " % a
+    return s[0:s.__len__() - 2]
+
 class Zone(models.Model):
     name        = models.CharField(max_length=10, unique=True)
     full_name   = models.CharField(max_length=50, blank=True, null=True)
@@ -129,8 +134,10 @@ class Action(models.Model):
         if self.target.count() == 0:
             return "None"
         elif self.target.count() > 0:
-            #return self.target.count()
-            s   = self.target.select_related()[0].__unicode__()
+            tt  = []
+            for t in self.target.select_related():
+                tt.append(t.alias_display())
+            s   = a_join(tt[0:2])
             if self.target.count() > 1:
                 s   += " (%s)" % self.target.count().__str__()
             return s
