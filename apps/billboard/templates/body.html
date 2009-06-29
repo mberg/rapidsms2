@@ -1,54 +1,20 @@
 <html>
 <head>
 <title>{% block title %}Home{% endblock %} - Baroni</title>
-<style type="text/css">
-body {
-    color: #666;
-}
-a, a:visited, a:link, a:hover {
-    color: black;
-    text-decoration: none;
-    padding: 0.2em;
-}
-a:hover {
-    color: orange;
-    text-decoration: underline;
-    background-color: black;
-}
-#header {
-    border-bottom: 1px solid #666;
-}
-#header p.tagline {
-    margin-top: 0;
-    padding-top: 0;
-}
-#header h1 {
-    margin-bottom: 0;
-    padding-bottom: 0;
-}
-#header #menu {
-    list-style-type: none;
-    padding: 0;
-}
+<link rel="stylesheet" type="text/css" href="/style/global.css" />
+<link rel="stylesheet" type="text/css" href="/style/billboard.css" />
+<link rel="stylesheet" type="text/css" href="/style/forms.css" />
+<link rel="stylesheet" type="text/css" href="/media/css/widgets.css" />
 
-#header #menu li {
-    display: inline;
-}
-td {
-    padding: 0.2em;
-}
-tr.row1 {
-    background-color: #dedede;
-}
-tr.row2 {
-    background-color: #aeaeae;
-}
-tr td {
-    text-align: center;
-}
-td.text {
-    text-align: left;
-}
+<script type="text/javascript" src="/admin/jsi18n/"></script>
+<script type="text/javascript" src="/media/js/core.js"></script>
+<script type="text/javascript" src="/media/js/admin/RelatedObjectLookups.js"></script>
+<script type="text/javascript" src="/media/js/getElementsBySelector.js"></script>
+<script type="text/javascript" src="/media/js/actions.js"></script>
+<script type="text/javascript" src="/media/js/calendar.js"></script>
+<script type="text/javascript" src="/media/js/admin/DateTimeShortcuts.js"></script>
+
+<style type="text/css">
 </style>
 </head>
 <body>
@@ -73,3 +39,4 @@ td.text {
 {% block footer %}
 {% endblock %}
 </div>
+</html>

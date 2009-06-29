@@ -12,6 +12,9 @@ class Zone(models.Model):
     def __unicode__(self):
         return u"%s (%s)" % (self.full_name, self.name) if not self.full_name == None else self.name
 
+    def display_name(self):
+        return self.__unicode__()
+
     @classmethod
     def by_name (cls, name):
         try:
