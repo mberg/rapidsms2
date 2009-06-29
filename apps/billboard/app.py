@@ -150,7 +150,7 @@ class App (rapidsms.app.App):
     # message sending helper
     def followup_stop(self, sender):
         # we charge the manager if he has credit but don't prevent sending if he hasn't.
-        if config['send_exit_notif']:
+        if bool(config['send_exit_notif']):
             recipients  = Member.active_boards()
             send_message(self.backend, sender, recipients, _(u"Info: %(member)s has left the network.") % {'member':sender.alias_display()}, 'exit_notif_all', True)
         send_message(self.backend, Member.system(), sender, _(u"You have now left the network. Your balance, shall you come back, is %(credit)s. Good bye.") % {'credit':price_fmt(sender.credit)}, 'exit_notif_board', True)
@@ -192,7 +192,7 @@ class App (rapidsms.app.App):
 
     # message sending helper
     def followup_join(self, sender):
-        if config['send_join_notif']:
+        if bool(config['send_join_notif']):
             recipients  = Member.active_boards()
             recipients.remove(sender)
             try:

@@ -10,7 +10,7 @@ class Zone(models.Model):
     zone        = models.ForeignKey('Zone',verbose_name=_("Parent Zone"), blank=True, null=True, related_name="related_zone")
 
     def __unicode__(self):
-        return self.full_name if not self.full_name == None else self.name
+        return u"%s (%s)" % (self.full_name, self.name) if not self.full_name == None else self.name
 
     @classmethod
     def by_name (cls, name):
@@ -179,9 +179,6 @@ class Configuration(models.Model):
     def get_dictionary(cls):
         dico    = {}
         for conf in cls.objects.all():
-            try:
-                dico[conf.key]  = eval(conf.value) # SECURITY: assume good faith?
-            except NameError:
-                dico[conf.key]  = conf.value
+            dico[conf.key]  = conf.value
         return dico
         

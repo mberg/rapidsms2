@@ -6,12 +6,17 @@ from apps.billboard.models import *
 from apps.billboard.utils import *
 from django.http import HttpResponse
 
+def ovload_context(context):
+    co  = {'conf': config}
+    context.update(co)
+    return context
+
 def index(request):
-    return HttpResponse(loader.get_template('body.html').render(Context({'conf': config})))
+    return HttpResponse(loader.get_template('body.html').render(ovload_context(Context({'me': 'reg'}))))
 
 def help(request):
     print config['service_num']
-    return HttpResponse(loader.get_template('help.html').render(Context({'conf': config})))
+    return HttpResponse(loader.get_template('help.html').render(ovload_context(Context({}))))
 
 def zone_list(request):
 
@@ -54,13 +59,13 @@ def zone_list(request):
     c = Context({
         'conf': config,
     })
-    return HttpResponse(t.render(c))
+    return HttpResponse(t.render(ovload_context(c)))
 
 def history(request):
     t   = loader.get_template('history.html')
     c   = Context({'members': Member.objects.filter(membership=MemberType.by_code('board')),
                    'conf': config})
-    return HttpResponse(t.render(c))
+    return HttpResponse(t.render(ovload_context(c)))
 
 def history_one(request, alias):
     member  = Member.objects.get(alias=alias)
@@ -68,6 +73,6 @@ def history_one(request, alias):
     c   = Context({'member': member,
                    'actions': Action.objects.filter(Q(source=member)),
                    'conf': config})
-    return HttpResponse(t.render(c))
+    return HttpResponse(t.render(ovload_context(c)))
 
 
