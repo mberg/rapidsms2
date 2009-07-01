@@ -15,7 +15,7 @@ class Zone(models.Model):
     zone        = models.ForeignKey('Zone',verbose_name=_("Parent Zone"), blank=True, null=True, related_name="related_zone")
 
     def __unicode__(self):
-        return u"%s (%s)" % (self.full_name, self.name) if not self.full_name == None else self.name
+        return u"%s (@%s)" % (self.full_name, self.name) if not self.full_name == None else self.name
 
     def display_name(self):
         return self.__unicode__()
@@ -71,7 +71,7 @@ class Member(models.Model):
                 front   = "%s %s" % (self.user.first_name, self.user.last_name)
             else:
                 return self.alias
-        return u'%(front)s (%(alias)s)' % {'front': front, 'alias': self.alias}
+        return u'%(front)s (@%(alias)s)' % {'front': front, 'alias': self.alias}
 
     def is_board(self):
         return bool(self.membership == MemberType.objects.get(code='board'))
