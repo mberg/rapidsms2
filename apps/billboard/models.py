@@ -119,13 +119,13 @@ class ActionType(models.Model):
             return None
 
 class Action(models.Model):
-    kind        = models.ForeignKey("ActionType")
+    kind        = models.ForeignKey("ActionType", related_name="%(class)s_related_kind")
     source      = models.ForeignKey("Member", related_name="%(class)s_related_source")
     target      = models.ManyToManyField("Member", related_name="%(class)s_related_target",blank=True)
     text        = models.CharField(max_length=1400)
     date        = models.DateTimeField()
     cost        = models.FloatField(default=0)
-    tags        = models.ManyToManyField("Tag",null=True,blank=True)
+    ad          = models.ForeignKey("AdType",null=True,blank=True, related_name="%(class)s_related_ad")
 
     def __unicode__(self):
         return u"%(from)s %(kind)s (%(cost)s)" % {'from': self.source.alias, 'kind': self.kind, 'cost':self.cost}
@@ -142,9 +142,10 @@ class Action(models.Model):
                 s   += " (%s)" % self.target.count().__str__()
             return s
 
-class Tag(models.Model):
+class AdType(models.Model):
     code        = models.CharField(max_length=2, unique=True)
-    name        = models.CharField(max_length=30)
+    name        = models.CharField(max_length=50)
+    price       = models.FloatField(default=0)
 
     def __unicode__(self):
         return self.name
@@ -161,7 +162,7 @@ class Tag(models.Model):
         try:
             return cls.objects.get(code=code)
         except models.ObjectDoesNotExist:
-            t   = Tag(code=code,name=code)
+            t   = AdType(code=code,name=code)
             t.save()
             return t
 

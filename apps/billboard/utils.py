@@ -6,6 +6,7 @@ import spomsky
 import string
 import random
 from django.utils.translation import ugettext_lazy as _
+import re
 
 def modem_logger(modem, message, type):
     if type in (1,2): print "%8s %s" % (type, message)
@@ -42,7 +43,6 @@ def zone_recipients(zonecode, exclude=None):
     for zone in zonecode:
         try:
             query_zone  = Zone.objects.get(name=zone)
-            print query_zone
             all_zones   = recurs_zones(query_zone)
             all_boards  = Member.objects.filter(active=True,membership=MemberType.objects.get(code='board'),zone__in=all_zones)
         except models.ObjectDoesNotExist:
@@ -69,16 +69,32 @@ def recurs_zones(zone):
     zonelist.append(zone)
     return zonelist
 
-def message_cost(sender, recipients):
+def message_cost(sender, recipients, ad=None, fair=False):
     price   = 0
-    mtype   = sender.membership
-    cost    = mtype.fee
+    if not ad == None:
+        cost    = ad.price
+    else:
+        mtype   = sender.membership
+        cost    = mtype.fee
+
     for recip in recipients:
-        price   += (recip.rating * cost)
+        if fair:
+            price   += float(config['fair_price'])
+        else:
+            price   += (recip.rating * cost)
+
     return price
 
+def ad_from(content):
+    try:
+        adt     = re.search('^\s?\+([a-z])', content).groups()[0]
+        adt     = AdType.by_code(adt)
+    except:
+        adt     = None
+    return adt
 
-def send_message(backend, sender, recipients, content, action_code=None, allow_overdraft=False):
+
+def send_message(backend, sender, recipients, content, action_code=None, adt=None, allow_overdraft=False, fair=False):
     plain_recip     = recipients # save this for record_action
     if recipients.__class__ == str:
         recipients  = Member(alias=random_alias(),rating=1,mobile=recipients,credit=0, membership=MemberType.objects.get(code='alien'))
@@ -86,7 +102,7 @@ def send_message(backend, sender, recipients, content, action_code=None, allow_o
     if recipients.__class__ == Member:
         recipients  = [recipients]
 
-    cost    = message_cost(sender, recipients)
+    cost    = message_cost(sender, recipients, adt, fair)
     if cost > sender.credit and not allow_overdraft:
         raise InsufficientCredit
 
@@ -113,7 +129,7 @@ def send_message(backend, sender, recipients, content, action_code=None, allow_o
             sender.credit   = 0
 
     if action_code.__class__ == str and action_code != None:
-        record_action(action_code, sender, plain_recip, content, cost)
+        record_action(action_code, sender, plain_recip, content, cost, adt)
 
     return cost
 
@@ -123,7 +139,7 @@ def default_tag():
 
     return Tag.by_code(config['dfl_tag_code'])
 
-def record_action(kind, source, target, text, cost, tags=[], date=datetime.datetime.now()):
+def record_action(kind, source, target, text, cost, ad=None, date=datetime.datetime.now()):
 
     if target.__class__ == str:
         target  = Member.system()
@@ -131,20 +147,12 @@ def record_action(kind, source, target, text, cost, tags=[], date=datetime.datet
     if target.__class__ == Member:
         target  = [target]
 
-    action  = Action(kind=ActionType.by_code(kind), source=source, text=text, date=date, cost=cost)
+    action  = Action(kind=ActionType.by_code(kind), source=source, text=text, date=date, cost=cost, ad=ad)
     action.save()
 
     for m in target:
         action.target.add(m)
 
-    for t in tags:
-        if t.__class__  == str:
-            tag = Tag.by_code(t)
-            if tag  == None:
-                continue
-        elif t.__class__    == Tag:
-            tag = t
-        action.tags.add(tag)
     action.save()
     return action
 

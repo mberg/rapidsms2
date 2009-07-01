@@ -1,0 +1,11 @@
+#menu, form {
+    display: none;
+}
+
+h1 {
+    font-size: 0.9em;
+}
+
+h2, p {
+    font-size: 0.7em;
+}

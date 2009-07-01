@@ -36,7 +36,6 @@ def index(request):
     return HttpResponse(loader.get_template('body.html').render(ovload_context(Context({'me': 'reg'}))))
 
 def help(request):
-    print config['service_num']
     return HttpResponse(loader.get_template('help.html').render(ovload_context(Context({}))))
 
 def zone_list(request):

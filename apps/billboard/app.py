@@ -20,7 +20,7 @@ def authenticated (func):
         if message.sender:
             return func(self, message, *args)
         else:
-            send_message(self.backend, Member.system(), message.peer, _(u"You (%(number)s) are not allowed to perform this action. Join the network to be able to.") % {'number': message.peer}, 'err_unactive_user_notif', True)
+            send_message(self.backend, Member.system(), message.peer, _(u"You (%(number)s) are not allowed to perform this action. Join the network to be able to.") % {'number': message.peer}, 'err_unactive_user_notif', None, True, True)
             return True
     return wrapper
 
@@ -29,7 +29,7 @@ def registered (func):
         if Member.objects.get(mobile=message.peer):
             return func(self, message, *args)
         else:
-            send_message(self.backend, Member.system(), message.peer, _(u"You (%(number)s) are not a registered member of the Network. Contact a member to join.") % {'number': message.peer}, 'err_unknow_user_notif', True)
+            send_message(self.backend, Member.system(), message.peer, _(u"You (%(number)s) are not a registered member of the Network. Contact a member to join.") % {'number': message.peer}, 'err_unknow_user_notif', None, True, True)
             return True
     return wrapper
 
@@ -72,17 +72,17 @@ class App (rapidsms.app.App):
             func, captures = self.keyword.match(self, message.text)
         except TypeError:
             # didn't find a matching function
-            # send_message(self.backend, Member.system(), message.peer, _("Unknown or incorrectly formed command: %(msg)s... Please call 999-9999") % {"msg":message.text[:10]}, 'err_nomatch_notif', True)
+            # send_message(self.backend, Member.system(), message.peer, _("Unknown or incorrectly formed command: %(msg)s... Please call 999-9999") % {"msg":message.text[:10]}, 'err_nomatch_notif', None, True, True)
             return False
         try:
             handled = func(self, message, *captures)
         except HandlerFailed, e:
             print e
-            send_message(self.backend, Member.system(), message.peer, e, 'err_plain_notif', True)
+            send_message(self.backend, Member.system(), message.peer, e, 'err_plain_notif', None, True, True)
             handled = True
         except Exception, e:
             print e
-            send_message(self.backend, Member.system(), message.peer, _(u"An error has occured (%(e)s). Contact %(service_num)s. %(from)s") % {'service_num': config['service_num'], 'from':message.peer, 'e':e}, 'err_occured_notif', True)
+            send_message(self.backend, Member.system(), message.peer, _(u"An error has occured (%(e)s). Contact %(service_num)s. %(from)s") % {'service_num': config['service_num'], 'from':message.peer, 'e':e}, 'err_occured_notif', None, True, True)
             raise
         message.was_handled = bool(handled)
         if message.was_handled:
@@ -99,21 +99,16 @@ class App (rapidsms.app.App):
     def new_announce (self, message, zonecode, text):
         targets     = zonecodes_from_string(zonecode.lower())
         recipients  = zone_recipients(targets, message.sender)
-        price       = message_cost(message.sender, recipients)
-        try:
-            # over simplified for know ; not sure how we'll use tags
-            tags    = re.search('^\s?\+([a-z])', text).groups()[0]
-        except:
-            tags    = []
+        adt         = ad_from(text)
+        price       = message_cost(message.sender, recipients, adt)
 
         try:
-            send_message(self.backend, message.sender, recipients, _(u"Announce (%(sender)s): %(text)s") % {"text":text, 'sender':message.sender.alias_display()}, 'ann_notif_all')
+            send_message(self.backend, message.sender, recipients, _(u"Announce: %(text)s") % {"text":text, 'sender':message.sender.alias_display()}, 'ann_notif_all', adt)
+            send_message(self.backend, Member.system(), message.sender, _(u"Thanks, your announce has been sent (%(price)s). Your balance is now %(credit)s.") % {'price':price_fmt(price), 'credit':price_fmt(message.sender.credit)}, 'ann_notif_board', None, True, True)
+            record_action('ann', message.sender, Member.system(), message.text, 0, adt)
         except InsufficientCredit:
-            send_message(self.backend, Member.system(), message.sender, _(u"Sorry, this message requires a %(price)s credit. You account balance is only %(credit)s. Top-up your account then retry.") % {'price':price_fmt(price), 'credit':price_fmt(message.sender.credit)}, 'ann_nonotif_board', True)
+            send_message(self.backend, Member.system(), message.sender, _(u"Sorry, this message requires a %(price)s credit. You account balance is only %(credit)s. Top-up your account then retry.") % {'price':price_fmt(price), 'credit':price_fmt(message.sender.credit)}, 'ann_nonotif_board', None, True, True)
 
-        record_action('ann', message.sender, Member.system(), message.text, 0, tags)
-
-        send_message(self.backend, Member.system(), message.sender, _(u"Thanks, your announce has been sent (%(price)s). Your balance is now %(credit)s.") % {'price':price_fmt(price), 'credit':price_fmt(message.sender.credit)}, 'ann_notif_board', True)
         return True
 
     # Disable my account
@@ -137,7 +132,7 @@ class App (rapidsms.app.App):
     def stop_board (self, message, name):
         member    = Member.objects.get(alias=name)
         if not member.active: # already off
-            send_message(self.backend, Member.system(), message.sender, _(u"%(member)s is not part of the network") % {'member':member.alias_display()}, 'board_was_off_notif', True)
+            send_message(self.backend, Member.system(), message.sender, _(u"%(member)s is not part of the network") % {'member':member.alias_display()}, 'board_was_off_notif', None, True, True)
             return True
         member.active   = False
         member.save()
@@ -153,8 +148,8 @@ class App (rapidsms.app.App):
         # we charge the manager if he has credit but don't prevent sending if he hasn't.
         if bool(config['send_exit_notif']):
             recipients  = Member.active_boards()
-            send_message(self.backend, sender, recipients, _(u"Info: %(member)s has left the network.") % {'member':sender.alias_display()}, 'exit_notif_all', True)
-        send_message(self.backend, Member.system(), sender, _(u"You have now left the network. Your balance, shall you come back, is %(credit)s. Good bye.") % {'credit':price_fmt(sender.credit)}, 'exit_notif_board', True)
+            send_message(self.backend, sender, recipients, _(u"Info: %(member)s has left the network.") % {'member':sender.alias_display()}, 'exit_notif_all', None, True, True)
+        send_message(self.backend, Member.system(), sender, _(u"You have now left the network. Your balance, shall you come back, is %(credit)s. Good bye.") % {'credit':price_fmt(sender.credit)}, 'exit_notif_board', None, True, True)
 
     # Activate my disabled account
     # join
@@ -180,7 +175,7 @@ class App (rapidsms.app.App):
     def join_board (self, message, name):
         member    = Member.objects.get(alias=name)
         if member.active: # already on
-            send_message(self.backend, Member.system(), message.sender, _(u"%(member)s is already active in the network") % {'member':member.alias_display()}, 'board_was_active_notif', True)
+            send_message(self.backend, Member.system(), message.sender, _(u"%(member)s is already active in the network") % {'member':member.alias_display()}, 'board_was_active_notif', None, True, True)
             return True
         member.active   = True
         member.save()
@@ -197,12 +192,12 @@ class App (rapidsms.app.App):
             recipients  = Member.active_boards()
             recipients.remove(sender)
             try:
-                send_message(self.backend, sender, recipients, _(u"Info: %(sender_zone)s has joined the network.") % {'sender_zone':sender.alias_display()}, 'join_notif_all')
+                send_message(self.backend, sender, recipients, _(u"Info: %(sender_zone)s has joined the network.") % {'sender_zone':sender.alias_display()}, 'join_notif_all', None, False, True)
             except InsufficientCredit:
-                send_message(self.backend, Member.system(), sender, _(u"You just joined the network. Other boards hasn't been notified because your credit is insufficient (%(credit)s). Welcome!") % {'credit':price_fmt(sender.credit)}, 'silent_join_notif_board', True)
+                send_message(self.backend, Member.system(), sender, _(u"You just joined the network. Other boards hasn't been notified because your credit is insufficient (%(credit)s). Welcome!") % {'credit':price_fmt(sender.credit)}, 'silent_join_notif_board', None, True, True)
                 return True
         
-        send_message(self.backend, Member.system(), sender, _(u"Thank you for joining the network! We notified your peers of your return. Your balance is %(credit)s.") % {'credit':price_fmt(sender.credit)}, 'join_notif_board', True)
+        send_message(self.backend, Member.system(), sender, _(u"Thank you for joining the network! We notified your peers of your return. Your balance is %(credit)s.") % {'credit':price_fmt(sender.credit)}, 'join_notif_board', None, True, True)
 
     # Add some credit to a member's account.
     # moneyup @bronx1 200
@@ -214,7 +209,7 @@ class App (rapidsms.app.App):
 
         record_action('moneyup', message.sender, member, message.text, 0)
 
-        send_message(self.backend, Member.system(), member, _(u"Thank you for toping-up your account. Your new balance is %(credit)s.") % {'credit':price_fmt(member.credit)}, 'moneyup_notif_board', True)
+        send_message(self.backend, Member.system(), member, _(u"Thank you for toping-up your account. Your new balance is %(credit)s.") % {'credit':price_fmt(member.credit)}, 'moneyup_notif_board', None, True, True)
 
         return True
 
@@ -256,14 +251,14 @@ class App (rapidsms.app.App):
         
         record_action('register', message.sender, member, message.text, 0)
         
-        send_message(self.backend, Member.system(), message.sender, _(u"%(alias)s registration successful with %(mobile)s at %(zone)s. Credit is %(credit)s." % {'mobile': member.mobile, 'alias': member.alias_display(), 'credit':price_fmt(member.credit), 'zone':member.zone}), 'reg_ok_notif', True)        
+        send_message(self.backend, Member.system(), message.sender, _(u"%(alias)s registration successful with %(mobile)s at %(zone)s. Credit is %(credit)s." % {'mobile': member.mobile, 'alias': member.alias_display(), 'credit':price_fmt(member.credit), 'zone':member.zone}), 'reg_ok_notif', None, True, True)
        
         self.followup_join(member)
 
         return True
 
     def register_error(self, peer, key, value):
-        send_message(self.backend, Member.system(), peer, _(u"Unable to register. %(key)s (%(value)s) is either incorrect or in use by another member." % {'key': key, 'value': value}), 'mobile_exist_noreg_notif', True)
+        send_message(self.backend, Member.system(), peer, _(u"Unable to register. %(key)s (%(value)s) is either incorrect or in use by another member." % {'key': key, 'value': value}), 'mobile_exist_noreg_notif', None, True, True)
         return True
 
     # Add credit to account by sending voucher number
@@ -286,12 +281,14 @@ class App (rapidsms.app.App):
         text    = u"%(op)s %(ussd)s: %(topup)s" % {'ussd': operator_topup, 'topup':price_fmt(amount), 'op':operator}
         record_action('topup', message.sender, Member.system(), text, 0)
 
-        send_message(self.backend, Member.system(), message.sender, _(u"Thank you for toping-up your account. Your new balance is %(credit)s.") % {'credit':price_fmt(message.sender.credit)}, 'topup_notif_board', True)
+        send_message(self.backend, Member.system(), message.sender, _(u"Thank you for toping-up your account. Your new balance is %(credit)s.") % {'credit':price_fmt(message.sender.credit)}, 'topup_notif_board', None, True, True)
 
         return True
 
     @keyword(r'ping')
     def ping (self, message):
+        log = MessageLog(sender=message.peer,sender_member=None,recipient=Member.system().mobile,recipient_member=Member.system(),text=message.text,date=datetime.datetime.now())
+        log.save()
         send_message(self.backend, Member.system(), message.peer, "pong")
         return True
 
@@ -301,7 +298,7 @@ class App (rapidsms.app.App):
         message.sender  =   Member.objects.get(mobile=message.peer)
 
         if float(config['fair_price']) > message.sender.credit:
-            print "No Credit, No Help"
+            # No Credit, No Help
             return True
         
         message.sender.credit   -= float(config['fair_price'])
@@ -320,7 +317,7 @@ join @name | \
 register alias mobile zonecode[ credit rating membership] | \
 moneyup @name amount")
 
-        send_message(self.backend, Member.system(), message.sender, help_message, 'help_board', True)
+        send_message(self.backend, Member.system(), message.sender, help_message, 'help_board', None, True, True)
         return True
 
     def outgoing (self, message):

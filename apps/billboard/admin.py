@@ -35,9 +35,9 @@ class MemberTypeAdmin(admin.ModelAdmin):
     pass
 
 class MessageLogAdmin(admin.ModelAdmin):
-    list_display    = ('__unicode__', 'date')
+    list_display    = ('__unicode__', 'date',)
     list_filter     = ['date','sender']
-    ordering = ('-date',)
+    ordering = ('-id',)
 
 
 class MemberAdmin(admin.ModelAdmin):
@@ -67,8 +67,9 @@ class ActionAdmin(admin.ModelAdmin):
     list_filter     = ['date','kind']
     ordering = ('-id',)
 
-class TagAdmin(admin.ModelAdmin):
-    pass
+class AdTypeAdmin(admin.ModelAdmin):
+    list_display    = ('name', 'code', 'price')
+    ordering = ('code',)
 
 class ConfigurationAdmin(admin.ModelAdmin):
     list_display    = ('__unicode__', 'value')
@@ -88,4 +89,4 @@ admin.site.register(Zone, ZoneAdmin)
 admin.site.register(Configuration, ConfigurationAdmin)
 admin.site.register(ActionType, ActionTypeAdmin)
 admin.site.register(Action, ActionAdmin)
-admin.site.register(Tag, TagAdmin)
+admin.site.register(AdType, AdTypeAdmin)
