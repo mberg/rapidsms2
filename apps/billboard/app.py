@@ -215,7 +215,7 @@ class App (rapidsms.app.App):
 
     # registers a member (usually Board) into the system.
     # register bronx1 567896 bronx
-    @keyword(r'register \@?(\w+) (\d+) (\w+)( [\d\.]+)?( \d+)?( \w+)?')
+    @keyword(r'register \@?(\w+) (\+\d+) (\w+)( [\d\.]+)?( \d+)?( \w+)?')
     @sysadmin
     def register_board (self, message, alias, mobile, zonecode, credit, rating, membership):
         if credit == None: credit = 0
