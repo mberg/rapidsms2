@@ -122,7 +122,7 @@ class Action(models.Model):
     kind        = models.ForeignKey("ActionType")
     source      = models.ForeignKey("Member", related_name="%(class)s_related_source")
     target      = models.ManyToManyField("Member", related_name="%(class)s_related_target",blank=True)
-    text        = models.CharField(max_length=140)
+    text        = models.CharField(max_length=1400)
     date        = models.DateTimeField()
     cost        = models.FloatField(default=0)
     tags        = models.ManyToManyField("Tag",null=True,blank=True)
@@ -170,7 +170,7 @@ class MessageLog(models.Model):
     sender_member   =  models.ForeignKey("Member", blank=True, null=True, related_name="%(class)s_related_sender")
     recipient   = models.CharField(max_length=16)
     recipient_member=  models.ForeignKey("Member", blank=True, null=True, related_name="%(class)s_related_recipients")
-    text        = models.CharField(max_length=140)
+    text        = models.CharField(max_length=1400)
     date        = models.DateTimeField()
 
     def __unicode__(self):

@@ -5,6 +5,7 @@ import datetime
 import spomsky
 import string
 import random
+from django.utils.translation import ugettext_lazy as _
 
 def modem_logger(modem, message, type):
     if type in (1,2): print "%8s %s" % (type, message)
@@ -91,6 +92,9 @@ def send_message(backend, sender, recipients, content, action_code=None, allow_o
 
     mtype   = sender.membership
     contrib = mtype.contrib
+
+    content = _(u"%(alias)s> %(msg)s" % {'alias': sender.alias_display(), 'msg': content})[:160]
+
     for recipient in recipients:
         if recipient.is_board():
             recipient.credit    += contrib

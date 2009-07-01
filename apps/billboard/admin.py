@@ -29,6 +29,7 @@ class MemberUserAdmin(UserAdmin):
 
 class ZoneAdmin(admin.ModelAdmin):
     list_filter = ['zone']
+    ordering = ('id',)
 
 class MemberTypeAdmin(admin.ModelAdmin):
     pass
@@ -47,6 +48,7 @@ class MemberAdmin(admin.ModelAdmin):
         (_('Location'), {'fields': ('zone', ('latitude', 'longitude'), 'details', 'picture')}),
     )
     actions =  actions = ['delete_selected','make_activated']
+    ordering = ('alias',)
 
     def make_activated(self, request, queryset):
         rows_updated = queryset.update(active=True)
@@ -57,7 +59,8 @@ class MemberAdmin(admin.ModelAdmin):
         self.message_user(request, "%s successfully activated." % message_bit)
 
 class ActionTypeAdmin(admin.ModelAdmin):
-    pass
+    list_display    = ('code', 'name')
+    ordering = ('code',)
 
 class ActionAdmin(admin.ModelAdmin):
     list_display    = ('__unicode__', 'date', 'cost','targets')
@@ -69,6 +72,7 @@ class TagAdmin(admin.ModelAdmin):
 
 class ConfigurationAdmin(admin.ModelAdmin):
     list_display    = ('__unicode__', 'value')
+    ordering = ('key',)
 
 # registrations
 try:

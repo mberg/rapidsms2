@@ -10,10 +10,10 @@ from ..simpleoperator.operators import *
 
 import re
 import unicodedata
-from django.utils.translation import ugettext
+from django.utils.translation import ugettext_lazy as _
 from django.conf import settings
 
-def _(txt): return txt #unicodedata.normalize('NFKD', ugettext(txt)).encode('ascii','ignore')
+#def _(txt): return txt #unicodedata.normalize('NFKD', ugettext(txt)).encode('ascii','ignore')
 
 def authenticated (func):
     def wrapper (self, message, *args):
@@ -77,7 +77,8 @@ class App (rapidsms.app.App):
         try:
             handled = func(self, message, *captures)
         except HandlerFailed, e:
-            send_message(self.backend, Member.system(), message.peer, e.message, 'err_plain_notif', True)
+            print e
+            send_message(self.backend, Member.system(), message.peer, e, 'err_plain_notif', True)
             handled = True
         except Exception, e:
             print e
@@ -291,16 +292,36 @@ class App (rapidsms.app.App):
 
     @keyword(r'ping')
     def ping (self, message):
-        try:
-            send_message(self.backend, Member.system(), message.peer, "pong")
-        except Exception, e:
-            print e
-        try:
-            print message.peer
-            print message.sender
-        except: pass
+        send_message(self.backend, Member.system(), message.peer, "pong")
         return True
 
+    @keyword(r'help')
+    @registered
+    def help_board (self, message):
+        message.sender  =   Member.objects.get(mobile=message.peer)
+
+        if float(config['fair_price']) > message.sender.credit:
+            print "No Credit, No Help"
+            return True
+        
+        message.sender.credit   -= float(config['fair_price'])
+        message.sender.save()
+
+        record_action('help', message.sender, Member.system(), message.text, float(config['fair_price']))
+
+        help_message    = _(u"Help: ad @target [+c] Your Text here | \
+stop | \
+join | \
+topup voucher | \
+help -- topup requires %s" % config['operator'])
+        if message.sender.is_admin():
+            help_message    = _("Admin Help: stop @name | \
+join @name | \
+register alias mobile zonecode[ credit rating membership] | \
+moneyup @name amount")
+
+        send_message(self.backend, Member.system(), message.sender, help_message, 'help_board', True)
+        return True
 
     def outgoing (self, message):
         # if info message ; down manager credit by 10F
