@@ -53,7 +53,6 @@ class App (rapidsms.app.App):
         if config.__len__() < 1: raise Exception, "Need configuration fixture"
         settings.LANGUAGE_CODE  = config["lang"]
         self.backend    = self._router.backends.pop()
-        #self.router.call_at(30, self.tryme)
         self.router.call_at(to_seconds(config['check_balance_in']), self.period_balance_check)
 
     def period_balance_check(self):
@@ -71,11 +70,6 @@ class App (rapidsms.app.App):
             send_message(self.backend, Member.system(), Member.objects.get(alias=config['balance_admin']), request, 'balance_notif', None, True, True)
 
         return to_seconds(config['check_balance_in'])
-    
-
-    def tryme (self):
-        send_message(self.backend, Member.system(), Member.objects.get(alias='reg'), _(u"HEloooooo"), None, None, False, True)
-        return 30 
 
     def parse (self, message):        
         member = Member.by_mobile(message.peer)
