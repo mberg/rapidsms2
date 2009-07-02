@@ -82,7 +82,7 @@ def zone_list(request):
 
 def history(request):
     t   = loader.get_template('history.html')
-    c   = Context({'members': Member.objects.filter(membership=MemberType.by_code('board')),})
+    c   = Context({'members': Member.objects.all(),})
     return HttpResponse(t.render(ovload_context(c)))
 
 class DateForm(forms.Form):
