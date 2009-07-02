@@ -51,21 +51,29 @@ class App (rapidsms.app.App):
         if config.__len__() < 1: raise Exception, "Need configuration fixture"
         settings.LANGUAGE_CODE  = config["lang"]
         self.backend    = self._router.backends.pop()
-        self.router.call_at(to_seconds(config['check_balance_in']), self.period_balance_check)
+        self.router.call_at(60, self.period_balance_check)
 
     def period_balance_check(self):
         try:
             operator            = eval("%s()" % config['operator'])
             operator_sentence   = self.backend.modem.ussd(operator.BALANCE_USSD)
             balance             = operator.get_balance(operator_sentence)
-        except: return True
+        except: return 999999
+
+        system  = Member.system()
 
         request = _(u"%(carrier)s %(request)s> %(balance)s (%(response)s)") % {'carrier': operator, 'request': operator.BALANCE_USSD, 'balance': price_fmt(balance), 'response': operator_sentence}
-        record_action('balance_check', Member.system(), Member.system(), request, 0)
+        record_action('balance_check', system, system, request, 0)
 
         if balance <= float(config['balance_lowlevel']):
-            
-            send_message(backend=self.backend, sender=Member.system(), recipients=Member.objects.get(alias=config['balance_admin']), content=request, action='balance_notif', overdraft=True, fair=True)
+            balance -= send_message(backend=self.backend, sender=system, recipients=Member.objects.get(alias=config['balance_admin']), content=request, action='balance_notif', overdraft=True, fair=True)
+
+        if balance != system.credit:
+            old_credit  = system.credit
+            diff    = (float(balance) - float(system.credit)).__abs__()
+            system.credit  = balance
+            system.save()
+            record_action('adjust_credit', system, system, _("Credit was: %(old)s. Balance is: %(balance)s. Credit is: %(new)s.") % {'old': old_credit, 'balance': balance, 'new': system.credit}, diff)
 
         return to_seconds(config['check_balance_in'])
 
