@@ -114,7 +114,7 @@ def ad_from(content):
     return adt
 
 
-def send_message(backend, sender, recipients, content, action_code=None, adt=None, allow_overdraft=False, fair=False):
+def send_message(backend, sender, recipients, content, action=None, adt=None, overdraft=False, fair=False):
     plain_recip     = recipients # save this for record_action
     if recipients.__class__ == str:
         recipients  = Member(alias=random_alias(),rating=1,mobile=recipients,credit=0, membership=MemberType.objects.get(code='alien'))
@@ -123,7 +123,7 @@ def send_message(backend, sender, recipients, content, action_code=None, adt=Non
         recipients  = [recipients]
 
     cost    = message_cost(sender, recipients, adt, fair)
-    if cost > sender.credit and not allow_overdraft:
+    if cost > sender.credit and not overdraft:
         raise InsufficientCredit
 
     mtype   = sender.membership
@@ -144,14 +144,14 @@ def send_message(backend, sender, recipients, content, action_code=None, adt=Non
 
     sender.credit   -= cost
 
-    if allow_overdraft:
+    if overdraft:
         if sender.credit < 0:
             sender.credit   = 0
 
     sender.save()
 
-    if action_code.__class__ == str and action_code != None:
-        record_action(action_code, sender, plain_recip, content, cost, adt)
+    if action.__class__ == str and action != None:
+        record_action(action, sender, plain_recip, content, cost, adt)
 
     return cost
 
