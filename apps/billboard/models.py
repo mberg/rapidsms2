@@ -143,7 +143,7 @@ class Action(models.Model):
             return s
 
 class AdType(models.Model):
-    code        = models.CharField(max_length=2, unique=True)
+    code        = models.CharField(max_length=10, unique=True)
     name        = models.CharField(max_length=50)
     price       = models.FloatField(default=0)
 

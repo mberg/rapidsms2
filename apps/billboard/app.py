@@ -93,17 +93,21 @@ class App (rapidsms.app.App):
         return handled
 
     # Place an ad on the system
-    # new @ny +s Sell pictures of Paris Hilton Naked. +123456789
-    @keyword(r'new ([a-z\,0-9\@]+) (.+)')
+    # sell @ny pictures of Paris Hilton Naked. +123456789
+    @keyword(r'([a-z]+) ([a-z\,0-9\@]+) (.+)')
     @authenticated
-    def new_announce (self, message, zonecode, text):
+    def new_announce (self, message, keyw, zonecode, text):
+        print keyw
         targets     = zonecodes_from_string(zonecode.lower())
         recipients  = zone_recipients(targets, message.sender)
-        adt         = ad_from(text)
+        adt         = AdType.by_code(keyw.lower())
+        if adt == None:
+            adt = AdType.by_code(config['dfl_ad_type'])
+        print adt
         price       = message_cost(message.sender, recipients, adt)
 
         try:
-            send_message(self.backend, message.sender, recipients, _(u"Announce: %(text)s") % {"text":text, 'sender':message.sender.alias_display()}, 'ann_notif_all', adt)
+            send_message(self.backend, message.sender, recipients, _(u"%(keyw)s: %(text)s") % {"text":text, 'sender':message.sender.alias_display(), 'keyw':adt.name}, 'ann_notif_all', adt)
             send_message(self.backend, Member.system(), message.sender, _(u"Thanks, your announce has been sent (%(price)s). Your balance is now %(credit)s.") % {'price':price_fmt(price), 'credit':price_fmt(message.sender.credit)}, 'ann_notif_board', None, True, True)
             record_action('ann', message.sender, Member.system(), message.text, 0, adt)
         except InsufficientCredit:
@@ -190,7 +194,10 @@ class App (rapidsms.app.App):
     def followup_join(self, sender):
         if bool(config['send_join_notif']):
             recipients  = Member.active_boards()
-            recipients.remove(sender)
+            try:
+                recipients.remove(sender)
+            except: pass
+
             try:
                 send_message(self.backend, sender, recipients, _(u"Info: %(sender_zone)s has joined the network.") % {'sender_zone':sender.alias_display()}, 'join_notif_all', None, False, True)
             except InsufficientCredit:
