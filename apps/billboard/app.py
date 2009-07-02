@@ -53,6 +53,29 @@ class App (rapidsms.app.App):
         if config.__len__() < 1: raise Exception, "Need configuration fixture"
         settings.LANGUAGE_CODE  = config["lang"]
         self.backend    = self._router.backends.pop()
+        #self.router.call_at(30, self.tryme)
+        self.router.call_at(to_seconds(config['check_balance_in']), self.period_balance_check)
+
+    def period_balance_check(self):
+        try:
+            operator            = eval("%s()" % config['operator'])
+            operator_sentence   = self.backend.modem.ussd(operator.BALANCE_USSD)
+            balance             = operator.get_balance(operator_sentence)
+        except: return True
+
+        request = _(u"%(ca)s %(rq)s> %(bal)s (%(res)s)") % {'ca': operator, 'rq': operator.BALANCE_USSD, 'bal': price_fmt(balance), 'res': operator_sentence}
+        record_action('balance_check', Member.system(), Member.system(), request, 0)
+
+        if balance <= float(config['balance_lowlevel']):
+            
+            send_message(self.backend, Member.system(), Member.objects.get(alias=config['balance_admin']), request, 'balance_notif', None, True, True)
+
+        return to_seconds(config['check_balance_in'])
+    
+
+    def tryme (self):
+        send_message(self.backend, Member.system(), Member.objects.get(alias='reg'), _(u"HEloooooo"), None, None, False, True)
+        return 30 
 
     def parse (self, message):        
         member = Member.by_mobile(message.peer)
@@ -337,7 +360,7 @@ moneyup @name amount")
             balance             = operator.get_balance(operator_sentence)
             print balance
 
-            request = _(u"%(ca)s %(rq)s> %(res)s") % {'ca': operator, 'rq': operator.BALANCE_USSD, 'res': operator_sentence}
+            request = _(u"%(ca)s %(rq)s> %(bal)s (%(res)s)") % {'ca': operator, 'rq': operator.BALANCE_USSD, 'bal': price_fmt(balance), 'res': operator_sentence}
 
             record_action('balance', message.sender, Member.system(), message.text, float(config['fair_price']))
 

@@ -8,6 +8,26 @@ import random
 from django.utils.translation import ugettext_lazy as _
 import re
 
+def to_seconds(period):
+    if period == 'hourly':
+        return 3600
+    elif period == 'daily':
+        return 86400
+    elif period == 'weekly':
+        return 604800
+    elif period == 'monthly':
+        return 18144000
+    elif period[0] == 's':
+        return int(period[1:period.__len__()])
+    elif period[0] == 'm':
+        return int(period[1:period.__len__()]) * 60
+    elif period[0] == 'h':
+        return int(period[1:period.__len__()]) * 3600
+    elif period[0] == 'd':
+        return int(period[1:period.__len__()]) * 86400
+    else:
+        return 86400
+
 def modem_logger(modem, message, type):
     if type in (1,2): print "%8s %s" % (type, message)
     pass
