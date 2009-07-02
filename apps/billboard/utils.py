@@ -128,6 +128,8 @@ def send_message(backend, sender, recipients, content, action_code=None, adt=Non
         if sender.credit < 0:
             sender.credit   = 0
 
+    sender.save()
+
     if action_code.__class__ == str and action_code != None:
         record_action(action_code, sender, plain_recip, content, cost, adt)
 

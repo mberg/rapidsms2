@@ -85,6 +85,12 @@ class Member(models.Model):
     def alias_display(self):
         return u"@%(alias)s" % {'alias': self.alias}
 
+    def status(self):
+        if self.active:
+            return _(u"Active")
+        else:
+            return _(u"Inactive")
+
     @classmethod
     def by_mobile (cls, mobile):
         try:

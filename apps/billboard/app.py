@@ -54,13 +54,7 @@ class App (rapidsms.app.App):
         settings.LANGUAGE_CODE  = config["lang"]
         self.backend    = self._router.backends.pop()
 
-    def parse (self, message):
-        try:
-            pass
-            #message.text    = unicodedata.normalize('NFKD', message.text.decode('ibm850')).encode('ascii','ignore')
-        except Exception:
-            pass
-        
+    def parse (self, message):        
         member = Member.by_mobile(message.peer)
         if member:
             message.sender = member
@@ -91,29 +85,6 @@ class App (rapidsms.app.App):
                 log.sender_member   = message.sender
             log.save()
         return handled
-
-    # Place an ad on the system
-    # sell @ny pictures of Paris Hilton Naked. +123456789
-    @keyword(r'([a-z]+) ([a-z\,0-9\@]+) (.+)')
-    @authenticated
-    def new_announce (self, message, keyw, zonecode, text):
-        print keyw
-        targets     = zonecodes_from_string(zonecode.lower())
-        recipients  = zone_recipients(targets, message.sender)
-        adt         = AdType.by_code(keyw.lower())
-        if adt == None:
-            adt = AdType.by_code(config['dfl_ad_type'])
-        print adt
-        price       = message_cost(message.sender, recipients, adt)
-
-        try:
-            send_message(self.backend, message.sender, recipients, _(u"%(keyw)s: %(text)s") % {"text":text, 'sender':message.sender.alias_display(), 'keyw':adt.name}, 'ann_notif_all', adt)
-            send_message(self.backend, Member.system(), message.sender, _(u"Thanks, your announce has been sent (%(price)s). Your balance is now %(credit)s.") % {'price':price_fmt(price), 'credit':price_fmt(message.sender.credit)}, 'ann_notif_board', None, True, True)
-            record_action('ann', message.sender, Member.system(), message.text, 0, adt)
-        except InsufficientCredit:
-            send_message(self.backend, Member.system(), message.sender, _(u"Sorry, this message requires a %(price)s credit. You account balance is only %(credit)s. Top-up your account then retry.") % {'price':price_fmt(price), 'credit':price_fmt(message.sender.credit)}, 'ann_nonotif_board', None, True, True)
-
-        return True
 
     # Disable my account
     # stop
@@ -213,6 +184,7 @@ class App (rapidsms.app.App):
     def moneyup_board (self, message, name, amount):
         member    = Member.objects.get(alias=name)
         member.credit   += float(amount)
+        member.save()
 
         record_action('moneyup', message.sender, member, message.text, 0)
 
@@ -284,6 +256,7 @@ class App (rapidsms.app.App):
         except: raise Exception, operator_sentence
 
         message.sender.credit   += float(amount)
+        message.sender.save()
 
         text    = u"%(op)s %(ussd)s: %(topup)s" % {'ussd': operator_topup, 'topup':price_fmt(amount), 'op':operator}
         record_action('topup', message.sender, Member.system(), text, 0)
@@ -326,6 +299,79 @@ moneyup @name amount")
 
         send_message(self.backend, Member.system(), message.sender, help_message, 'help_board', None, True, True)
         return True
+
+    @keyword(r'balance\s?\@?([a-z0-9]*)')
+    @registered
+    def balance_board (self, message, target):
+        message.sender  =   Member.objects.get(mobile=message.peer)
+        if not target == None and target != "" and message.sender.is_admin():
+            target  = Member.objects.get(alias=target)
+        else:
+            target  = message.sender
+
+        if float(config['fair_price']) > message.sender.credit:
+            # No Credit, No Balance
+            return True
+        
+        message.sender.credit   -= float(config['fair_price'])
+        message.sender.save()
+
+        record_action('balance', message.sender, Member.system(), message.text, float(config['fair_price']))
+
+        balance_message    = _(u"Balance for %(user)s: %(bal)s. Account is %(stat)s" % {'bal':price_fmt(target.credit), 'stat': target.status().lower(), 'user':target.alias_display()})
+        if message.sender.is_admin():
+            help_message    = _("Admin Help: stop @name amount")
+
+        send_message(self.backend, Member.system(), message.sender, balance_message, 'balance_notif', None, True, True)
+        return True
+
+    @keyword(r'system\s?(\w*)')
+    @sysadmin
+    def system (self, message, command):
+
+        if command == 'balance':
+            operator            = eval("%s()" % config['operator'])
+
+            operator_sentence   = self.backend.modem.ussd(operator.BALANCE_USSD)
+            print operator_sentence
+            balance             = operator.get_balance(operator_sentence)
+            print balance
+
+            request = _(u"%(ca)s %(rq)s> %(res)s") % {'ca': operator, 'rq': operator.BALANCE_USSD, 'res': operator_sentence}
+
+            record_action('balance', message.sender, Member.system(), message.text, float(config['fair_price']))
+
+            record_action('balance_check', message.sender, Member.system(), request, 0)
+            
+            balance_text= _(u"%(ca)s %(rq)s> %(res)s") % {'ca': operator, 'rq': operator.BALANCE_USSD, 'res': price_fmt(balance)}
+            send_message(self.backend, Member.system(), message.sender, balance_text, 'balance_notif', None, True, True)
+        
+        return True
+        
+
+    # Place an ad on the system
+    # sell @ny pictures of Paris Hilton Naked. +123456789
+    @keyword(r'([a-z]+) ([a-z\,0-9\@]+) (.+)')
+    @authenticated
+    def new_announce (self, message, keyw, zonecode, text):
+        print keyw
+        targets     = zonecodes_from_string(zonecode.lower())
+        recipients  = zone_recipients(targets, message.sender)
+        adt         = AdType.by_code(keyw.lower())
+        if adt == None:
+            adt = AdType.by_code(config['dfl_ad_type'])
+        print adt
+        price       = message_cost(message.sender, recipients, adt)
+
+        try:
+            send_message(self.backend, message.sender, recipients, _(u"%(keyw)s: %(text)s") % {"text":text, 'sender':message.sender.alias_display(), 'keyw':adt.name}, 'ann_notif_all', adt)
+            send_message(self.backend, Member.system(), message.sender, _(u"Thanks, your announce has been sent (%(price)s). Your balance is now %(credit)s.") % {'price':price_fmt(price), 'credit':price_fmt(message.sender.credit)}, 'ann_notif_board', None, True, True)
+            record_action('ann', message.sender, Member.system(), message.text, 0, adt)
+        except InsufficientCredit:
+            send_message(self.backend, Member.system(), message.sender, _(u"Sorry, this message requires a %(price)s credit. You account balance is only %(credit)s. Top-up your account then retry.") % {'price':price_fmt(price), 'credit':price_fmt(message.sender.credit)}, 'ann_nonotif_board', None, True, True)
+
+        return True
+
 
     def outgoing (self, message):
         # if info message ; down manager credit by 10F
