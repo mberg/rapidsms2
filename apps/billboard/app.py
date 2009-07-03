@@ -33,7 +33,7 @@ def registered (func):
 
 def sysadmin (func):
     def wrapper (self, message, *args):
-        if message.sender.is_admin():
+        if message.sender and message.sender.is_admin():
             return func(self, message, *args)
         else:
             return False
@@ -84,6 +84,9 @@ class App (rapidsms.app.App):
         else:
             message.sender = None
 
+        log = MessageLog(sender=message.peer,sender_member=message.sender,recipient=Member.system().mobile,recipient_member=Member.system(),text=message.text,date=datetime.datetime.now())
+        log.save()
+
     def handle (self, message):
         try:
             func, captures = self.keyword.match(self, message.text)
@@ -102,11 +105,6 @@ class App (rapidsms.app.App):
             send_message(backend=self.backend, sender=Member.system(), recipients=message.peer, content=_(u"An error has occured (%(e)s). Contact %(service_num)s. %(from)s") % {'service_num': config['service_num'], 'from':message.peer, 'e':e}, action='err_occured_notif', overdraft=True, fair=True)
             raise
         message.was_handled = bool(handled)
-        if message.was_handled:
-            log = MessageLog(sender=message.peer,recipient=Member.system().mobile,recipient_member=Member.system(),text=message.text[:140],date=datetime.datetime.now())
-            if message.sender:
-                log.sender_member   = message.sender
-            log.save()
         return handled
 
     # Disable my account
@@ -248,7 +246,7 @@ class App (rapidsms.app.App):
         except:
             return self.register_error(message.sender, 'Alias', alias)
         
-        member      = Member(user=user, alias=alias, mobile=mobile,zone=zone, credit=float(credit), rating=int(rating), membership=membership, active=True)
+        member      = Member(user=user, alias=alias, name=alias, mobile=mobile,zone=zone, credit=float(credit), rating=int(rating), membership=membership, active=True)
         member.save()
         
         record_action('register', message.sender, member, message.text, 0)
@@ -268,15 +266,15 @@ class App (rapidsms.app.App):
     @keyword(r'topup (\d+)')
     @registered
     def topup_board (self, message, card_pin):
-
-        return True # need to migrate to pygsm first
-        operator            = eval("%s()" % operator_name)
+        print card_pin
+        operator            = eval("%s()" % config['operator'])
+        print operator
         operator_topup      = operator.build_topup_ussd(card_pin)
-
-        try:
-            operator_sentence   = modem.ussd(operator_topup)
-            amount              = operator.get_amount_topup(operator_sentence)
-        except: raise Exception, operator_sentence
+        print operator_topup
+        operator_sentence   = self.backend.modem.ussd(operator_topup)
+        print operator_sentence
+        amount              = operator.get_amount_topup(operator_sentence)
+        print amount
 
         message.sender.credit   += float(amount)
         message.sender.save()
