@@ -9,7 +9,7 @@
     {% if zone.b %}
     <ul>
     {% for b in zone.b %}
-        <li>Board <strong><em>{{ b.n }} ({{ b.pf }})</em></strong>, {{ b.m }}<p>{{ b.d|linebreaks }}</li>
+        <li><strong>Board <em>{{ b.n }} ({{ b.pf }})</em></strong><p>{{ b.d|linebreaks }}</li>
     {% endfor %}
     </ul>
     {% endif %}
