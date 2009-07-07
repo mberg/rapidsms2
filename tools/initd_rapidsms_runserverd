@@ -1,0 +1,90 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          rapidsms_serverd
+### END INIT INFO
+
+# Author: reg <rgaudin@gmail.com>
+
+# Do NOT "set -e"
+
+# This is just decoration
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+DESC="RapidSMS route"
+NAME=rapidsms_runserverd
+DAEMON_PATH=/home/mvp/src/sms
+DAEMON=./manage.py
+DAEMON_ARGS="runserver 0.0.0.0:8000"
+PIDFILE=/var/run/$NAME.pid
+SCRIPTNAME=/etc/init.d/$NAME
+
+# Exit if the package is not installed
+[ -x "$DAEMON_PATH/$DAEMON" ] || exit 0
+
+# Read configuration variable file if it is present
+[ -r /etc/default/$NAME ] && . /etc/default/$NAME
+
+# Load the VERBOSE setting and other rcS variables
+. /lib/init/vars.sh
+VERBOSE=yes
+
+# Define LSB log_* functions.
+# Depend on lsb-base (>= 3.0-6) to ensure that this file is present.
+. /lib/lsb/init-functions
+
+do_start()
+{
+	cd $DAEMON_PATH && nohup $DAEMON $DAEMON_ARGS > /dev/null &
+	#$DAEMON start $DAEMON_ARGS > /dev/null || return 1
+}
+
+do_stop()
+{
+	#KPID=`pgrep -f rapidsms_serverd`
+	KPID=`cat $PIDFILE`
+	kill $KPID
+	RETVAL="$?"
+	rm -f $PIDFILE
+	[ "$RETVAL" = 2 ] && return 2
+	return "$RETVAL"
+}
+
+do_restart()
+{
+	do_stop
+	sleep 1
+	do_start
+}
+
+
+case "$1" in
+  start)
+	[ "$VERBOSE" != no ] && log_daemon_msg "Starting $DESC" "$NAME"
+	do_start
+	case "$?" in
+		0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
+		2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
+	esac
+	;;
+  stop)
+	[ "$VERBOSE" != no ] && log_daemon_msg "Stopping $DESC" "$NAME"
+	do_stop
+	case "$?" in
+		0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
+		2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
+	esac
+	;;
+  restart|force-reload)
+	log_daemon_msg "Restarting $DESC" "$NAME"
+	do_restart
+	case "$?" in
+		0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
+		2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
+	esac
+	;;
+  *)
+	echo "Usage: $SCRIPTNAME {start|stop|restart|force-reload}" >&2
+	exit 3
+	;;
+esac
+
+:

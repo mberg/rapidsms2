@@ -17,6 +17,7 @@ urlpatterns = patterns('',
     (r'^history\/$', 'apps.billboard.views.history'),
     (r'^history\/([a-z0-9]+)$', 'apps.billboard.views.history_one'),
     (r'^help\/$', 'apps.billboard.views.help'),
+    (r'^database$', 'apps.billboard.views.database_backup'),
     (r'^style/(?P<path>.*)$', 'django.views.static.serve', {'document_root': 'apps/billboard/templates/style', 'show_indexes': True}),
     (r'^medias/(?P<path>.*)$', 'django.views.static.serve', {'document_root': 'media', 'show_indexes': True}),
     admin_urls

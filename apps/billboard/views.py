@@ -120,4 +120,9 @@ def history_one(request, alias):
                    'form': form})
     return HttpResponse(t.render(ovload_context(c)))
 
+def database_backup(request):
+    f   = open("sms.db", "r")
+    h   = HttpResponse(f)
+    h._headers['content-type']  = ('Content-Type', 'application/octet-stream;')
+    return h
 
