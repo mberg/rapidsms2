@@ -8,6 +8,7 @@ from django.http import HttpResponse
 from django import forms
 from django.contrib.admin.widgets import AdminTimeWidget,AdminDateWidget
 import datetime
+from rapidsms.config import Config
 
 def month_start(date):
     return date.replace(day=1)
@@ -121,7 +122,8 @@ def history_one(request, alias):
     return HttpResponse(t.render(ovload_context(c)))
 
 def database_backup(request):
-    f   = open("sms.db", "r")
+    conf= Config("rapidsms.ini")
+    f   = open(conf['database']['name'], "r")
     h   = HttpResponse(f)
     h._headers['content-type']  = ('Content-Type', 'application/octet-stream;')
     return h
