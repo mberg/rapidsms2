@@ -113,7 +113,7 @@ def history_one(request, alias):
     
     total   = 0
     for action in actions:
-        total   += action.cost
+        if action.source == member: total += action.cost
 
     c   = Context({'member': member,
                    'actions': actions,
@@ -126,5 +126,6 @@ def database_backup(request):
     f   = open(conf['database']['name'], "r")
     h   = HttpResponse(f)
     h._headers['content-type']  = ('Content-Type', 'application/octet-stream;')
+    h._headers['content-disposition']   = ('Content-Disposition', 'attachment;filename="%s_%s"' % (datetime.date.today().strftime("%Y-%m-%d"), conf['database']['name']))
     return h
 
