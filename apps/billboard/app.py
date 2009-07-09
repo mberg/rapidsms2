@@ -191,12 +191,12 @@ class App (rapidsms.app.App):
             except: pass
 
             try:
-                send_message(backend=self.backend, sender=sender, recipients=recipients, content=_(u"Info: %(sender_zone)s has joined %(brand)s.") % {'brand': config['brand'], 'sender_zone':sender.alias_display()}, action='join_notif_all', fair=True)
+                send_message(backend=self.backend, sender=sender, recipients=recipients, content=_(u"Info: I just joined %(brand)s.") % {'brand': config['brand'], 'sender_zone':sender.alias_display()}, action='join_notif_all', fair=True)
             except InsufficientCredit:
                 send_message(backend=self.backend, sender=Member.system(), recipients=sender, content=_(u"Akwaaba! You just joined %(brand)s. Other boards haven't been notified because your credit is insufficient (%(credit)s).") % {'brand': config['brand'], 'credit':price_fmt(sender.credit)}, action='silent_join_notif_board', overdraft=True, fair=True)
                 return True
         
-        send_message(backend=self.backend, sender=Member.system(), recipients=sender, content=_(u"Thank you for re-joining %(brand)s! We notified your peers of your return. Your balance is %(credit)s.") % {'brand': config['brand'], 'credit':price_fmt(sender.credit)}, action='join_notif_board', overdraft=True, fair=True)
+        send_message(backend=self.backend, sender=Member.system(), recipients=sender, content=_(u"Thank you for joining %(brand)s! We notified your peers. Your balance is %(credit)s.") % {'brand': config['brand'], 'credit':price_fmt(sender.credit)}, action='join_notif_board', overdraft=True, fair=True)
 
     # Add some credit to a member's account.
     # moneyup @bronx1 200
