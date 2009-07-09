@@ -363,7 +363,7 @@ class App (rapidsms.app.App):
 
     # Place an ad on the system
     # sell @ny pictures of Paris Hilton Naked. +123456789
-    @keyword(r'([a-z]+) ([a-z\,0-9\@]+) (.+)')
+    @keyword(r'([a-z]+) (@[a-z\,0-9]+) (.+)')
     @authenticated
     def new_announce (self, message, keyw, zonecode, text):
         print keyw
@@ -371,7 +371,8 @@ class App (rapidsms.app.App):
         recipients  = zone_recipients(targets, message.sender)
         adt         = AdType.by_code(keyw.lower())
         if adt == None:
-            adt = AdType.by_code(config['dfl_ad_type'])
+            return False
+
         print adt
         price       = message_cost(message.sender, recipients, adt)
 
