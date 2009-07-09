@@ -53,7 +53,7 @@ class App (rapidsms.app.App):
         settings.LANGUAGE_CODE  = config["lang"]
         self.backend    = self._router.backends.pop()
         self.router.call_at(60, self.period_balance_check)
-        self.router.call_at(10, self.bulk_send)
+        self.router.call_at(120, self.bulk_send)
     
     """Periodicly checks the carrier balance of the system (modem) SIM card.
     """

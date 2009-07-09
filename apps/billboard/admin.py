@@ -79,7 +79,7 @@ class ConfigurationAdmin(admin.ModelAdmin):
 class BulkMessageAdmin(admin.ModelAdmin):
     list_display    = ('__unicode__', 'date','cost','status')
     list_filter     = ['status','date','sender',]
-    ordering = ('-id',)
+    ordering = ('-date',)
 
     def raw_cost(self, message):
         recipients  = recipients_from(sender=message.sender, target_str=message.recipient)
