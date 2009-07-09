@@ -28,6 +28,11 @@ def to_seconds(period):
     else:
         return 86400
 
+def recipients_from(sender, target_str):
+    targets     = zonecodes_from_string(target_str.lower())
+    recipients  = zone_recipients(targets, sender)
+    return recipients
+
 def modem_logger(modem, message, type):
     if type in (1,2): print "%8s %s" % (type, message)
     pass

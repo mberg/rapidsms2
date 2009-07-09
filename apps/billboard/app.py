@@ -12,6 +12,7 @@ import re
 import unicodedata
 from django.utils.translation import ugettext_lazy as _
 from django.conf import settings
+import datetime
 
 def authenticated (func):
     def wrapper (self, message, *args):
@@ -52,7 +53,10 @@ class App (rapidsms.app.App):
         settings.LANGUAGE_CODE  = config["lang"]
         self.backend    = self._router.backends.pop()
         self.router.call_at(60, self.period_balance_check)
-
+        self.router.call_at(10, self.bulk_send)
+    
+    """Periodicly checks the carrier balance of the system (modem) SIM card.
+    """
     def period_balance_check(self):
         try:
             operator            = eval("%s()" % config['operator'])
@@ -76,6 +80,22 @@ class App (rapidsms.app.App):
             record_action('adjust_credit', system, system, _("Credit was: %(old)s. Balance is: %(balance)s. Credit is: %(new)s.") % {'old': old_credit, 'balance': balance, 'new': system.credit}, diff)
 
         return to_seconds(config['check_balance_in'])
+
+    """Sends messages from the BulkMessage objects.
+    """
+    def bulk_send(self):
+        now         = datetime.datetime.now()
+        messages    = BulkMessage.objects.filter(status='P', date__lte=now)
+        for message in messages:
+            recipients  = recipients_from(sender=message.sender, target_str=message.recipient)
+            try:
+                send_message(backend=self.backend, sender=message.sender, recipients=recipients, content=message.text, action='bulk_send')
+                message.status  = 'S'
+            except InsufficientCredit:
+                message.status  = 'E'
+            message.save()
+
+        return to_seconds(config['send_bulk_in'])
 
     def parse (self, message):        
         member = Member.by_mobile(message.peer)

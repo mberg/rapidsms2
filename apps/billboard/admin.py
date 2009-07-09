@@ -6,6 +6,7 @@ from datetime import datetime
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
 from django.utils.translation import ugettext_lazy as _
+from utils import *
 
 class MemberInline (admin.StackedInline):
     model   = Member
@@ -75,6 +76,19 @@ class ConfigurationAdmin(admin.ModelAdmin):
     list_display    = ('__unicode__', 'value')
     ordering = ('key',)
 
+class BulkMessageAdmin(admin.ModelAdmin):
+    list_display    = ('__unicode__', 'date','cost','status')
+    list_filter     = ['status','date','sender',]
+    ordering = ('-id',)
+
+    def raw_cost(self, message):
+        recipients  = recipients_from(sender=message.sender, target_str=message.recipient)
+        return float(message_cost(message.sender, recipients))
+
+    def cost(self, message):
+        return price_fmt(self.raw_cost(message))
+
+
 # registrations
 try:
     admin.site.unregister(User)
@@ -90,3 +104,5 @@ admin.site.register(Configuration, ConfigurationAdmin)
 admin.site.register(ActionType, ActionTypeAdmin)
 admin.site.register(Action, ActionAdmin)
 admin.site.register(AdType, AdTypeAdmin)
+admin.site.register(BulkMessage, BulkMessageAdmin)
+

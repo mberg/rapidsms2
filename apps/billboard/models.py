@@ -185,6 +185,22 @@ class MessageLog(models.Model):
         recipient   = self.recipient_member.alias if self.recipient_member else self.recipient
         return u"%(sender)s > %(recipient)s: %(text)s" % {'sender': sender, 'recipient':recipient, 'text':self.text[:20]}
 
+class BulkMessage(models.Model):
+    STATUS_CHOICES = (
+        ('P', 'Pending'),
+        ('E', 'Error'),
+        ('S', 'Sent'),
+    )
+
+    sender          =  models.ForeignKey("Member", related_name="%(class)s_related_sender")
+    recipient       = models.CharField(max_length=16)
+    text            = models.CharField(max_length=1400)
+    date            = models.DateTimeField()
+    status          = models.CharField(max_length=1, choices=STATUS_CHOICES,default='P')
+
+    def __unicode__(self):
+        return u"%(sender)s > %(recipient)s: %(text)s" % {'sender': self.sender, 'recipient': self.recipient, 'text':self.text[:60]}
+
 class Configuration(models.Model):
     key     = models.CharField(max_length=16, primary_key=True)
     value   = models.CharField(max_length=100)
