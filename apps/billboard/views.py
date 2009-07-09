@@ -110,6 +110,7 @@ def history_one(request, alias):
         form   = DateForm()
 
     actions = Action.objects.filter(Q(target=member)|Q(source=member),Q(date__gte=date_from,date__lte=date_to))
+    actions.query.group_by  = ['billboard_action.id']
     
     total   = 0
     for action in actions:
