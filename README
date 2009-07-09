@@ -13,10 +13,4 @@ Licence: Public Domain
     Example:
         $ ./manage.py loaddata apps/billboard/fixtures/*.json
 
-* PERIODIC TASKS
-    Some apps may require periodic launch of scripts.
-    Add the content of scripts/cron file to your crontab.
-
-    Example:
-        $ crontab -r apps/billboard/scripts/crontab # WARNING ; REPLACES YOURS
 
