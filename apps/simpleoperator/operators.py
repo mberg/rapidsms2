@@ -68,18 +68,29 @@ class OrangeMali(SimpleOperator):
 class Malitel(SimpleOperator):
     
     CAPABILITIES    = {'USSD_BALANCE':True, 'USSD_TOPUP':True}
-    BALANCE_USSD    = "#122#"
-    TOPUP_USSD      = "*111*"
+    BALANCE_USSD    = "*101#"
+    TOPUP_USSD      = "*102#"
     TOPUP_USSD_FMT  = "%s%s#"
 
     def get_balance(self, operator_string):
-        return None
+        #Votre solde est de 0 FCFA valable jusqu au 31.12.2029. Votre delai de grace arrive a expiration le 31.03.2030
+        balance_grp = re.search('Votre solde est de ([0-9\.]+) FCFA', operator_string)
+        try:
+            return float(balance_grp.groups()[0])
+        except:
+            raise UnparsableUSSDAnswer, operator_string
     
     def build_topup_ussd(self, card_pin):
-        return None
+        return self.TOPUP_USSD_FMT % (self.TOPUP_USSD, card_pin)
 
     def get_amount_topup(self, operator_string):
-        return None
+        #VOUS AVEZ APPROVISIONNE VOTRE COMPTE DE 1000 FCFA.Votre solde est de 1000 FCFA valable jusqu au 10.10.2009.
+        amount_grp  = re.search('VOUS AVEZ APPROVISIONNE VOTRE COMPTE DE ([0-9\.]+) FCFA', operator_string)
+        try:
+            return float(amount_grp.groups()[0])
+        except:
+            raise UnparsableUSSDAnswer, operator_string
+
 
 ## SENEGAL
 class OrangeSenegal(SimpleOperator):
