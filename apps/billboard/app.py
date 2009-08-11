@@ -6,7 +6,7 @@ from rapidsms.message import Message
 
 from models import *
 from utils import *
-from ..simpleoperator.operators import *
+from simpleoperator.operators import *
 
 import re
 import unicodedata
