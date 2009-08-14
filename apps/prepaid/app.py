@@ -203,6 +203,7 @@ class App (rapidsms.app.App):
         if balance <= float(self.config['balance_alert_level']):
             content = "ALERT %(car)s balance is %(bal)s" % {'car': self.carrier, 'bal': balance}
             msg = self.backend.message(self.config['balance_alert_mobile'], content[:160])
+            msg.PREPAID = True
             self.backend._router.outgoing(msg)
         
         return to_seconds(self.config['balance_check_interval'])
@@ -214,9 +215,12 @@ class App (rapidsms.app.App):
 
     def outgoing (self, message):
         # log outgoing message
-        log     = MessageLog(sender=self.me, recipient=message.peer, text=message.text, date=datetime.now())
-        log.save()
-        pass
+        try:
+            if message.PREPAID:
+                log     = MessageLog(sender=self.me, recipient=message.peer, text=message.text, date=datetime.now())
+                log.save()
+        except AttributeError:
+            pass
 
     def stop (self):
         """Perform global app cleanup when the application is stopped."""
