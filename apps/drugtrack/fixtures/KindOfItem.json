@@ -1,0 +1,1 @@
+[{"pk": "pak", "model": "tinystock.kindofitem", "fields": {"name": "Packs"}}, {"pk": "tab", "model": "tinystock.kindofitem", "fields": {"name": "Tablets"}}]

@@ -1,0 +1,1 @@
+[{"pk": "3873917987", "model": "tinystock.item", "fields": {"kind": "pak", "code": "002", "name": "Efferalgan 500mg"}}, {"pk": "893108", "model": "tinystock.item", "fields": {"kind": "tab", "code": "124", "name": "Metronidazole"}}]
