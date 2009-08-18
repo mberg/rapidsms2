@@ -136,3 +136,56 @@ class Provider(StoreProvider):
             return None
 
 StoreProvider.set_class(Provider, 'provider')
+
+class Patient(StoreProvider):
+
+    class Meta:
+        app_label = "drugtrack"
+    
+    SEXE_MALE    = 1
+    SEXE_FEMALE = 2
+    
+    SEXE_CHOICES = (
+        (SEXE_MALE,    _('Male')),
+        (SEXE_FEMALE,  _('Female')),
+    )
+    
+    first_name  = models.CharField(max_length=32, null=True, blank=True)
+    last_name   = models.CharField(max_length=32, null=True, blank=True)
+    sexe        = models.IntegerField(choices=SEXE_CHOICES, default=SEXE_MALE)
+    created_at  = models.DateTimeField(auto_now_add=True)
+    age         = models.IntegerField()
+    
+    def display_name(self):
+        if self.first_name or self.last_name:
+            return "%s %s" % (self.first_name, self.last_name)
+        else:
+            return str(self.id)
+
+    def display_full(self):
+        return self.display_name()
+
+    def __unicode__(self):
+        return self.display_name()
+
+    def display_age(self):
+        if self.age < 12:
+            return _(u"%(age)sm") % {'age': self.age}
+        else:
+            return _(u"%(age)sy") % {'age': self.age}
+
+    @classmethod
+    def age_from_str (cls, stra):
+        age = 0
+        try:
+            if stra[-1] == 'y':
+                age = int(stra[:-1]) * 12
+            elif stra[-1] == 'm':
+                age = int(stra[:-1])
+            else:
+                age = int(stra)
+        except:
+            age = 0
+        return age
+
+#StoreProvider.set_class(Patient, 'patient')

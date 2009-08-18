@@ -8,6 +8,6 @@ from models import TransferLog, KindOfItem, Item, StockItem, StoreProvider
 admin.site.register(KindOfItem)
 admin.site.register(Item)
 admin.site.register(StockItem)
-admin.site.register(StoreProvider)
+#admin.site.register(StoreProvider)
 admin.site.register(TransferLog)
 

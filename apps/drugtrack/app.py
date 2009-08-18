@@ -3,7 +3,7 @@
 import rapidsms
 from apps.tinystock.logic import *
 from apps.tinystock.exceptions import *
-from models import Zone, Facility, Provider, User
+from models import Zone, Facility, Provider, User, Patient
 from apps.tinystock.models import StoreProvider, KindOfItem, Item, StockItem
 from django.utils.translation import ugettext as _
 from rapidsms.parsers.keyworder import Keyworder
@@ -115,15 +115,7 @@ class App (rapidsms.app.App):
 
     def do_transfer_drug(self, message, sender, receiver, item, quantity):
         
-        #try:
         log = transfer_item(sender=sender, receiver=receiver, item=item, quantity=int(quantity))
-        '''except ItemNotInStore:
-            message.respond(_(u"Distribution request failed. You do not have %(med)s") % {'med': item})
-            return True
-        except NotEnoughItemInStock:
-            message.respond(_(u"Distribution request failed. You can't transfer %(q)s %(it)s to %(rec)s because you only have %(stk)s.") % {'q': quantity, 'it': item.name, 'rec': receiver.display_full(), 'stk': StockItem.objects.get(peer=sender, item=item).quantity})
-            return True
-        '''
 
         message.forward(receiver.mobile, "CONFIRMATION #%(d)s-%(sid)s-%(rid)s-%(lid)s You have received %(quantity)s %(item)s from %(sender)s. If not correct please reply: CANCEL %(lid)s" % {
             'quantity': quantity,
@@ -260,6 +252,42 @@ class App (rapidsms.app.App):
         message.respond(_(u"SUMMARY: Some items couldn't be transfered: %(detail)s") % {'detail': details})
         return True
 
+    @keyword(r'disp (\w+) (\w+) ([mMfF]) ([0-9\.]+[m|y]) (\w+) (\d+)')
+    @registered
+    def dispense_drug_patient (self, message, first, last, gender, age, code, quantity):
+
+        age     = Patient.age_from_str(age)
+        gender  = Patient.SEXE_MALE if gender.upper() == 'M' else Patient.SEXE_FEMALE
+        receiver= Patient(first_name=first, last_name=last, sexe=gender,age=age)
+        receiver.save()
+        sender      = StoreProvider.cls().by_mobile(message.peer)
+        item        = Item.by_code(code)
+
+        if item == None or sender == None or receiver == None:
+            message.respond(_(u"Dispense request failed. Either Item ID or Patient datas are wrong."))
+            return True
+
+        try:
+            log = transfer_item(sender=sender, receiver=receiver, item=item, quantity=int(quantity))
+        except ItemNotInStore:
+            message.respond(_(u"Dispense request failed. You do not have %(med)s") % {'med': item})
+            return True
+        except NotEnoughItemInStock:
+            message.respond(_(u"Dispense request failed. You can't dispense %(q)s %(it)s to %(rec)s because you only have %(stk)s.") % {'q': quantity, 'it': item.name, 'rec': receiver.display_full(), 'stk': StockItem.objects.get(peer=sender, item=item).quantity})
+            return True
+
+        message.respond("CONFIRMATION #%(d)s-%(sid)s-%(rid)s-%(lid)s You have dispensed %(quantity)s %(item)s to %(receiver)s. If not correct please reply: CANCEL %(lid)s" % {
+            'quantity': quantity,
+            'item': item.name,
+            'receiver': receiver.display_full(),
+            'd': log.date.strftime("%d%m%y"),
+            'sid': sender.id,
+            'rid': receiver.id,
+            'lid': log.id
+        })
+        return True
+        
+
     def stock_for(self, message, provider):
         if provider == None:
             return False
@@ -311,18 +339,27 @@ class App (rapidsms.app.App):
         
         # cancellation attempt
         other_peer  = log.receiver if peer == log.sender else log.sender
+
+        # if peer is a patient, don't send messages
+        try:
+            peer_is_patient = not other_peer.direct().mobile
+        except Provider.DoesNotExist:
+            peer_is_patient = True
+
         try:
             cancel_transfer(log)
             msg = _(u"CANCELLED Transfer #%(lid)s dated %(date)s by request of %(peer)s. Please forward conflict to Drug Store Head.") % {'lid': log.id, 'date': log.date.strftime("%b %d %y %H:%M"), 'peer': peer.direct().display_full()}
             message.respond(msg)
-            message.forward(other_peer.direct().mobile, msg)
+            if not peer_is_patient:
+                message.forward(other_peer.direct().mobile, msg)
         except (ItemNotInStore, NotEnoughItemInStock):
             # goods has been transfered elsewhere.
             msg = _(u"Cancellation failed. %(peer)s has started distributing drugs from transaction #%(lid)s. Contact Drug Store Head.") % {'lid': log.id, 'peer': peer.direct().display_full()}
             message.respond(msg)
-            message.forward(other_peer.direct().mobile, msg)
-            return True
-
+            if not peer_is_patient:
+                message.forward(other_peer.direct().mobile, msg)
+        except Provider.DoesNotExist:
+            pass
         return True
 
     def outgoing (self, message):
