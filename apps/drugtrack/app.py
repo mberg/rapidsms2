@@ -107,6 +107,8 @@ class App (rapidsms.app.App):
     
         return True
 
+    
+
     @keyword(r'dist \@(\w+) (\w+) (\d+)')
     @registered
     def transfer_clinic_chw (self, message, receiver, code, quantity):
@@ -123,7 +125,7 @@ class App (rapidsms.app.App):
         try:
             log = transfer_item(sender=sender, receiver=receiver, item=item, quantity=int(quantity))
         except ItemNotInStore:
-            message.respond(_(u"Distribution request failed. You never had %(med)s") % {'med': item})
+            message.respond(_(u"Distribution request failed. You do not have %(med)s") % {'med': item})
             return True
         except NotEnoughItemInStock:
             message.respond(_(u"Distribution request failed. You can't transfer %(q)s %(it)s to %(rec)s because you only have %(stk)s.") % {'q': quantity, 'it': item.name, 'rec': receiver.display_full(), 'stk': StockItem.objects.get(peer=sender, item=item).quantity})
@@ -150,6 +152,38 @@ class App (rapidsms.app.App):
         })
         
         return True
+
+    @keyword(r'add (\w+) (\d+) (.+)')
+    @registered
+    def add_stock (self, message, code, quantity, note):
+        
+        ''' Add stock for item. Used by main drug distribution point'''
+        
+        sender      = StoreProvider.cls().by_mobile(message.peer)
+        receiver = sender
+        #receiver   = StoreProvider.cls().by_alias(receiver)
+        item        = Item.by_code(code)
+        if item == None or sender == None or receiver == None:
+            message.respond(_(u"Distribution request failed. Either Item ID or CHW alias is wrong."))
+            return True
+        
+        try:
+            log = add_stock_for_item(receiver=receiver, item=item, quantity=int(quantity))
+        
+            message.respond("CONFIRMATION #%(d)s-%(sid)s-%(lid)s You have added %(quantity)s %(item)s to your stock. If not correct please reply: CANCEL %(lid)s" % {
+            'quantity': quantity,
+            'item': item.name,
+            'receiver': receiver.display_full(),
+            'd': log.date.strftime("%d%m%y"),
+            'sid': sender.id,
+            'rid': receiver.id,
+            'lid': log.id
+            })
+        except:
+            pass
+
+        return True
+
 
     @keyword(r'cdist (\w+) (.*)')
     @registered

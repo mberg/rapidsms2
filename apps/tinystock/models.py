@@ -106,8 +106,9 @@ class TransferLog(models.Model):
     item    = models.ForeignKey('Item')
     quantity= models.IntegerField()
     status  = models.IntegerField(choices=STATUS_CHOICES, default=STATUS_OK)
+    note = models.TextField(blank=True)
     
     def __unicode__(self):
         return u"%(d)s: %(s)s>%(r)s - %(q)s %(it)s" % {'s': self.sender.direct(), 'r': self.receiver.direct(), 'q': self.quantity, 'it': self.item.name, 'd': self.date.strftime("%Y%m%d")}
-
+    
 

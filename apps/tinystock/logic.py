@@ -14,6 +14,32 @@ def item_stock_for(store):
 
     return items
 
+def add_stock_for_item(receiver, item, quantity):
+    ''' Add to stock quantity for a pharmacist '''
+
+    # retrieve or create StockItem for receiver
+    # need to make it smarter to check to make sure sku item exists
+    try:
+        receiver_stock      = StockItem.objects.get(peer=receiver, item=item)
+    except StockItem.DoesNotExist:
+        receiver_stock      = StockItem(peer=receiver, item=item, quantity=0)
+        receiver_stock.save()
+        
+    log = TransferLog(sender=receiver, receiver=receiver, item=item, quantity=quantity, date=datetime.now())
+
+    # actual transfer
+    try:
+        receiver_stock.quantity += quantity
+        receiver_stock.save()
+        log.save()
+    
+    except Exception, e:
+        raise e
+
+    return log
+
+
+
 def transfer_item(sender, receiver, item, quantity):
     ''' Transfer an arbitrary quantity of goods between to StoreProvider '''
     try:
@@ -46,6 +72,7 @@ def transfer_item(sender, receiver, item, quantity):
         raise e
 
     return log
+
 
 def add_item(sku, code, kind, name):
     item    = Item(sku=sku, code=code, kind=kind, name=name)
