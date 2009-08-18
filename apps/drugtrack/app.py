@@ -13,6 +13,9 @@ from datetime import datetime
 class HandlerFailed (Exception):
     pass
 
+class MalformedRequest (Exception):
+    pass
+
 def registered (func):
     def wrapper (self, message, *args):
         if Provider.by_mobile(message.peer):
@@ -34,7 +37,10 @@ def admin (func):
 
 class App (rapidsms.app.App):
 
-    keyword = Keyworder()
+    keyword     = Keyworder()
+    # debug! shouldn't exist. sets the char to identify drugs
+    # in sms. used because httptester doesn'h handles #. use $ instead
+    drug_code   = '#'
 
     def start (self):
         self.backend    = self._router.backends.pop()
@@ -107,29 +113,17 @@ class App (rapidsms.app.App):
     
         return True
 
-    
-
-    @keyword(r'dist \@(\w+) (\w+) (\d+)')
-    @registered
-    def transfer_clinic_chw (self, message, receiver, code, quantity):
-        ''' Transfer Drug from Clinic to CHW or CHW to Clinic
-            DIST @mdiallo #001 10'''
+    def do_transfer_drug(self, message, sender, receiver, item, quantity):
         
-        sender      = StoreProvider.cls().by_mobile(message.peer)
-        receiver   = StoreProvider.cls().by_alias(receiver)
-        item        = Item.by_code(code)
-        if item == None or sender == None or receiver == None:
-            message.respond(_(u"Distribution request failed. Either Item ID or CHW alias is wrong."))
-            return True
-        
-        try:
-            log = transfer_item(sender=sender, receiver=receiver, item=item, quantity=int(quantity))
-        except ItemNotInStore:
+        #try:
+        log = transfer_item(sender=sender, receiver=receiver, item=item, quantity=int(quantity))
+        '''except ItemNotInStore:
             message.respond(_(u"Distribution request failed. You do not have %(med)s") % {'med': item})
             return True
         except NotEnoughItemInStock:
             message.respond(_(u"Distribution request failed. You can't transfer %(q)s %(it)s to %(rec)s because you only have %(stk)s.") % {'q': quantity, 'it': item.name, 'rec': receiver.display_full(), 'stk': StockItem.objects.get(peer=sender, item=item).quantity})
             return True
+        '''
 
         message.forward(receiver.mobile, "CONFIRMATION #%(d)s-%(sid)s-%(rid)s-%(lid)s You have received %(quantity)s %(item)s from %(sender)s. If not correct please reply: CANCEL %(lid)s" % {
             'quantity': quantity,
@@ -150,8 +144,29 @@ class App (rapidsms.app.App):
             'rid': receiver.id,
             'lid': log.id
         })
-        
         return True
+
+    @keyword(r'dist \@(\w+) (\w+) (\d+)')
+    @registered
+    def transfer_clinic_chw (self, message, receiver, code, quantity):
+        ''' Transfer Drug from Clinic to CHW or CHW to Clinic
+            DIST @mdiallo #001 10'''
+        
+        sender      = StoreProvider.cls().by_mobile(message.peer)
+        receiver   = StoreProvider.cls().by_alias(receiver)
+        item        = Item.by_code(code)
+        if item == None or sender == None or receiver == None:
+            message.respond(_(u"Distribution request failed. Either Item ID or CHW alias is wrong."))
+            return True
+
+        try:
+            return self.do_transfer_drug(message, sender, receiver, item, quantity)
+        except ItemNotInStore:
+            message.respond(_(u"Distribution request failed. You do not have %(med)s") % {'med': item})
+            return True
+        except NotEnoughItemInStock:
+            message.respond(_(u"Distribution request failed. You can't transfer %(q)s %(it)s to %(rec)s because you only have %(stk)s.") % {'q': quantity, 'it': item.name, 'rec': receiver.display_full(), 'stk': StockItem.objects.get(peer=sender, item=item).quantity})
+            return True
 
     @keyword(r'add (\w+) (\d+) (.+)')
     @registered
@@ -184,13 +199,65 @@ class App (rapidsms.app.App):
 
         return True
 
+    def parse_sku_quantities(self, sku_quantities):
+        couples  = sku_quantities.split(" %s" % self.drug_code)
+        skq = {}
+        try:
+            for couple in couples:
+                x = couple.split(" ")
+                code = x[0].replace(self.drug_code, "")
+                item = Item.by_code(code)
+                if skq.has_key(code) or item == None:
+                    raise MalformedRequest
+                skq[code]   = {'code': code, 'quantity': int(x[1]), 'item': item}
+            return skq
+        except IndexError:
+            raise MalformedRequest
 
-    @keyword(r'cdist (\w+) (.*)')
+    @keyword(r'cdist \@(\w+) (.+)')
     @registered
     def bulk_transfer_clinic_chw (self, message, receiver, sku_quantities):
         ''' Transfer Multiple Drugs from Clinic to CHW
             CDIST @mdiallo #001 10 #004 45 #007 32'''
-        message.respond(_(u"Sorry, multiple distribution is not yet implemented"))   
+
+        sender      = StoreProvider.cls().by_mobile(message.peer)
+        receiver   = StoreProvider.cls().by_alias(receiver)
+
+        if sku_quantities == None or sender == None or receiver == None:
+            message.respond(_(u"Distribution request failed. Either Item IDs or CHW alias is wrong."))
+            return True
+
+        try:
+            sq  = self.parse_sku_quantities(sku_quantities)
+        except MalformedRequest:
+            message.respond(_(u"Distribution failed. Syntax error in drugs/quantities statement."))
+            return True
+        
+        success = []
+        failures= []
+        for code in sq.itervalues():
+            try:
+                #print u"%(q)s %(c)s" % {'q':code['quantity'], 'c':code['item']}
+                self.do_transfer_drug(message, sender, receiver, code['item'], code['quantity'])
+                success.append(code)
+            except (NotEnoughItemInStock, ItemNotInStore, Exception):
+                failures.append(code)
+                continue
+        
+        if failures.__len__() == 0:
+            message.respond(_(u"SUMMARY: Multiple Drugs Distribution went through successfuly."))
+            return True
+        
+        if success.__len__() == 0:
+            message.respond(_(u"SUMMARY: complete FAILURE. Multiple Drugs Distribution went wrong on all items."))
+            return True
+
+        # some failed, some went trough
+        details = u""
+        for fail in failures:
+            details += u"%s, " % fail['item'].name
+        details = details[:-2]
+        message.respond(_(u"SUMMARY: Some items couldn't be transfered: %(detail)s") % {'detail': details})
         return True
 
     def stock_for(self, message, provider):
